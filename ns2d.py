@@ -279,7 +279,16 @@ print ' ASSEMBLY:'
 print ' ---------'
 
 start_time = time()
-Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.Element2D(simulation_option, polynomial_option, FreedomDegree, numNodes, numElements, IEN, x, y, gausspoints)
+Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.Element2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
+
+G = np.block([[Gx],
+              [Gy]])
+
+D = G.transpose()
+
+Z = np.zeros([numVerts,numVerts], dtype=float)
+A = np.block([[(M/dt)+(Kxx+Kyy), G],
+              [      -D        , Z]])
 
 
 end_time = time()

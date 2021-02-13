@@ -239,14 +239,16 @@ def Element2D(_simulation_option, _polynomial_option, _GL, _npoints, _nelem, _IE
  return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order
 
 
-
+#obsolete
 def Mini_NS2D(_GLV, _GLP, _NV, _NP, _nelem, _IEN, _x, _y):
  
  K = sps.lil_matrix((2*_NV,2*_NV), dtype = float)
  M = sps.lil_matrix((2*_NV,2*_NV), dtype = float)
  MLump = sps.lil_matrix((2*_NV,2*_NV), dtype = float)
- G = sps.lil_matrix((2*_NV,_NP), dtype = float)
- D = sps.lil_matrix((_NP,2*_NV), dtype = float)
+ Gx = sps.lil_matrix((_NV,_NP), dtype = float)
+ Gy = sps.lil_matrix((_NV,_NP), dtype = float)
+ Dx = sps.lil_matrix((_NP,_NV), dtype = float)
+ Dy = sps.lil_matrix((_NP,_NV), dtype = float)
 
 
  mini = gaussianQuadrature.Mini(_x, _y, _IEN)
@@ -284,6 +286,177 @@ def Mini_NS2D(_GLV, _GLP, _NV, _NP, _nelem, _IEN, _x, _y):
 
 
  return K, M, MLump, G, D
+
+
+
+
+def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numNodes, _numVerts, _numElements, _IEN, _x, _y, _GAUSSPOINTS):
+
+ Kxx = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
+ Kxy = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
+ Kyx = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
+ Kyy = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
+ K = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
+ M = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
+ MLump = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
+ Gx = sps.lil_matrix((_numNodes,_numVerts), dtype = float)
+ Gy = sps.lil_matrix((_numNodes,_numVerts), dtype = float)
+
+
+ element2D = gaussianQuadrature.Element2D(_x, _y, _IEN, _GAUSSPOINTS)
+i
+ #obsolete
+ if _simulation_option == 1:
+  if _polynomial_option == 1:
+   polynomial_order = 'Linear Element'
+   
+   for e in tqdm(range(0, _nelem)):
+    element2D.linear(e)
+ 
+    for i in range(0,_GL): 
+     ii = _IEN[e][i]
+   
+     for j in range(0,_GL):
+      jj = _IEN[e][j]
+ 
+      Kxx[ii,jj] += element2D.kxx[i][j]
+      Kxy[ii,jj] += element2D.kxy[i][j]
+      Kyx[ii,jj] += element2D.kyx[i][j]
+      Kyy[ii,jj] += element2D.kyy[i][j]
+      K[ii,jj] += element2D.kxx[i][j] + element2D.kyy[i][j]
+    
+      M[ii,jj] += element2D.mass[i][j]
+      MLump[ii,ii] += element2D.mass[i][j]
+ 
+      Gx[ii,jj] += element2D.gx[i][j]
+      Gy[ii,jj] += element2D.gy[i][j]
+ 
+  elif _polynomial_option == 2:
+   polynomial_order = 'Mini Element'
+ 
+   for e in tqdm(range(0, _numElements)):
+    element2D.mini(e)
+ 
+    for i in range(0,_velocityFD): 
+     ii = _IEN[e][i]
+   
+     for j in range(0,_velocityFD):
+      jj = _IEN[e][j]
+ 
+      Kxx[ii,jj] += element2D.kxx[i][j]
+      Kxy[ii,jj] += element2D.kxy[i][j]
+      Kyx[ii,jj] += element2D.kyx[i][j]
+      Kyy[ii,jj] += element2D.kyy[i][j]
+      K[ii,jj] += element2D.kxx[i][j] + element2D.kyy[i][j]
+    
+      M[ii,jj] += element2D.mass[i][j]
+      MLump[ii,ii] += element2D.mass[i][j]
+ 
+
+     for j in range(0,_pressureFD):
+      Gx[ii,jj] += element2D.gx[i][j]
+      Gy[ii,jj] += element2D.gy[i][j]
+ 
+
+
+
+  #obsolete
+  elif _polynomial_option == 3:
+   polynomial_order = 'Quadratic Element'
+ 
+   for e in tqdm(range(0, _nelem)):
+    element2D.quadratic(e)
+ 
+    for i in range(0,_GL): 
+     ii = _IEN[e][i]
+   
+     for j in range(0,_GL):
+      jj = _IEN[e][j]
+ 
+      Kxx[ii,jj] += element2D.kxx[i][j]
+      Kxy[ii,jj] += element2D.kxy[i][j]
+      Kyx[ii,jj] += element2D.kyx[i][j]
+      Kyy[ii,jj] += element2D.kyy[i][j]
+      K[ii,jj] += element2D.kxx[i][j] + element2D.kyy[i][j]
+    
+      M[ii,jj] += element2D.mass[i][j]
+      MLump[ii,ii] += element2D.mass[i][j]
+ 
+      Gx[ii,jj] += element2D.gx[i][j]
+      Gy[ii,jj] += element2D.gy[i][j]
+ 
+  elif _polynomial_option == 4:
+   polynomial_order = 'Cubic Element'
+ 
+   for e in tqdm(range(0, _nelem)):
+    element2D.cubic(e)
+ 
+    for i in range(0,_GL): 
+     ii = _IEN[e][i]
+   
+     for j in range(0,_GL):
+      jj = _IEN[e][j]
+ 
+      Kxx[ii,jj] += element2D.kxx[i][j]
+      Kxy[ii,jj] += element2D.kxy[i][j]
+      Kyx[ii,jj] += element2D.kyx[i][j]
+      Kyy[ii,jj] += element2D.kyy[i][j]
+      K[ii,jj] += element2D.kxx[i][j] + element2D.kyy[i][j]
+    
+      M[ii,jj] += element2D.mass[i][j]
+      MLump[ii,ii] += element2D.mass[i][j]
+ 
+      Gx[ii,jj] += element2D.gx[i][j]
+      Gy[ii,jj] += element2D.gy[i][j]
+
+ 
+  elif _polynomial_option == 0:
+   polynomial_order = 'Analytic Linear Element'
+   
+   for e in tqdm(range(0, _nelem)):
+    element2D.analytic(e)
+ 
+    for i in range(0,_GL): 
+     ii = _IEN[e][i]
+   
+     for j in range(0,_GL):
+      jj = _IEN[e][j]
+ 
+      Kxx[ii,jj] += element2D.kxx[i][j]
+      Kxy[ii,jj] += element2D.kxy[i][j]
+      Kyx[ii,jj] += element2D.kyx[i][j]
+      Kyy[ii,jj] += element2D.kyy[i][j]
+      K[ii,jj] += element2D.kxx[i][j] + element2D.kyy[i][j]
+    
+      M[ii,jj] += element2D.mass[i][j]
+      MLump[ii,ii] += element2D.mass[i][j]
+ 
+      Gx[ii,jj] += element2D.gx[i][j]
+      Gy[ii,jj] += element2D.gy[i][j]
+ 
+ 
+  else:
+   print ""
+   print " Error: Element type not found"
+   print ""
+   sys.exit()
+
+
+ #Debug
+ elif _simulation_option == 0:
+  polynomial_order = 'Debug'
+
+  Kxx = Kxx*1.0 
+  Kxy = Kxy*1.0
+  Kyx = Kyx*1.0
+  Kyy = Kyy*1.0
+  K =   K*1.0
+  M =   M*1.0
+  MLump = MLump*1.0
+  Gx =  Gx*1.0 
+  Gy =  Gy*1.0 
+ 
+ return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order
 
 
 
