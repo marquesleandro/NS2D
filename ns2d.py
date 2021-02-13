@@ -29,14 +29,14 @@ import relatory
 
 
 print '''
-               COPYRIGHT                    
- ======================================
+                 COPYRIGHT                    
+ ===========================================
  Simulator: %s
- created by Leandro Marques at 02/2019
+ created by Leandro Marques at 02/2021
  e-mail: marquesleandro67@gmail.com
- Gesar Search Group
- State University of the Rio de Janeiro
- ======================================
+ COPPE/Departament of Mechanical Engineering
+ Federal University of the Rio de Janeiro
+ ===========================================
 \n''' %sys.argv[0]
 
 
@@ -186,6 +186,7 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
   mesh = importMSH.Mini2D(pathMSHFile, mshFileName)
 
   numNodes               = mesh.numNodes
+  numVerts               = mesh.numVerts
   numElements            = mesh.numElements
   x                      = mesh.x
   y                      = mesh.y
@@ -196,7 +197,8 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
   neighborsNodesALE      = mesh.neighborsNodesALE
   neighborsElements      = mesh.neighborsElements
   minLengthMesh          = mesh.minLengthMesh
-  FreedomDegree          = mesh.FreedomDegree
+  velocityFreedomDegree  = mesh.velocityFreedomDegree
+  pressureFreedomDegree  = mesh.pressureFreedomDegree
   numPhysical            = mesh.numPhysical 
   Re = 54.5
   Sc = 1.0
@@ -302,26 +304,23 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
 
  # Applying vx condition
  xVelocityLHS0 = sps.lil_matrix.copy(M)
- xVelocityBC = benchmarkProblems.linearStent(numPhysical,numNodes,x,y)
+ xVelocityBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
  xVelocityBC.xVelocityCondition(boundaryEdges,xVelocityLHS0,neighborsNodes)
  benchmark_problem = xVelocityBC.benchmark_problem
 
- # Applying vr condition
+ # Applying vy condition
  yVelocityLHS0 = sps.lil_matrix.copy(M)
- yVelocityBC = benchmarkProblems.linearStent(numPhysical,numNodes,x,y)
+ yVelocityBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
  yVelocityBC.yVelocityCondition(boundaryEdges,yVelocityLHS0,neighborsNodes)
  
- # Applying psi condition
- streamFunctionLHS0 = sps.lil_matrix.copy(Kxx) + sps.lil_matrix.copy(Kyy)
- streamFunctionBC = benchmarkProblems.linearStent(numPhysical,numNodes,x,y)
- streamFunctionBC.streamFunctionCondition(boundaryEdges,streamFunctionLHS0,neighborsNodes)
-
- # Applying vorticity condition
- vorticityDirichletNodes = boundaryNodes
+ # Applying pressure condition
+ pressureLHS0 = sps.lil_matrix.copy(Kxx) + sps.lil_matrix.copy(Kyy)
+ pressureBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
+ pressureBC.pressureCondition(boundaryEdges,streamFunctionLHS0,neighborsNodes)
 
  # Applying concentration condition
  concentrationLHS0 = (sps.lil_matrix.copy(M)/dt) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kxx) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kyy)
- concentrationBC = benchmarkProblems.linearStent(numPhysical,numNodes,x,y)
+ concentrationBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
  concentrationBC.concentrationCondition(boundaryEdges,concentrationLHS0,neighborsNodes)
 
 
@@ -360,34 +359,13 @@ elif polynomial_option == 3:
 if import_option == 0:
  import_option = 'OFF'
  
- 
- 
  # -------------------------- Initial condition ------------------------------------
  vx = np.copy(xVelocityBC.aux1BC)
  vy = np.copy(yVelocityBC.aux1BC)
- psi = np.copy(streamFunctionBC.aux1BC)
- w = np.zeros([numNodes,1], dtype = float)
+ p = np.copy(pressureBC.aux1BC)
  c = np.copy(concentrationBC.aux1BC)
  # ---------------------------------------------------------------------------------
  
- 
- 
- 
- #---------- Step 1 - Compute the vorticity and stream field --------------------
- # -----Vorticity initial-----
- vorticityRHS = sps.lil_matrix.dot(Gx,vy) - sps.lil_matrix.dot(Gy,vx)
- vorticityLHS = sps.lil_matrix.copy(M)
- w = scipy.sparse.linalg.cg(vorticityLHS,vorticityRHS,w, maxiter=1.0e+05, tol=1.0e-05)
- w = w[0].reshape((len(w[0]),1))
- 
- 
- # -----Streamline initial-----
- streamFunctionRHS = sps.lil_matrix.dot(M,w)
- streamFunctionRHS = np.multiply(streamFunctionRHS,streamFunctionBC.aux2BC)
- streamFunctionRHS = streamFunctionRHS + streamFunctionBC.dirichletVector
- psi = scipy.sparse.linalg.cg(streamFunctionBC.LHS,streamFunctionRHS,psi, maxiter=1.0e+05, tol=1.0e-05)
- psi = psi[0].reshape((len(psi[0]),1))
-
  end_time = time()
  bc_apply_time = end_time - start_time
  print ' time duration: %.1f seconds \n' %bc_apply_time
@@ -448,7 +426,7 @@ os.chdir(initial_path)
 # ------------------------ Export VTK File ---------------------------------------
 # Linear and Mini Elements
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:   
- save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,w,psi,c,vx,vy)
+ save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,p,p,c,vx,vy)
  save.create_dir(folderResults)
  save.saveVTK(folderResults + str(0))
 
@@ -461,7 +439,6 @@ elif polynomial_option == 3:
 
 
 
-vorticityAux1BC = np.zeros([numNodes,1], dtype = float) 
 x_old = np.zeros([numNodes,1], dtype = float)
 y_old = np.zeros([numNodes,1], dtype = float)
 vx_old = np.zeros([numNodes,1], dtype = float)
@@ -474,13 +451,13 @@ for t in tqdm(range(1, nt)):
   print ""
   print '''
                  COPYRIGHT                    
-   ======================================
+   ===========================================
    Simulator: %s
-   created by Leandro Marques at 04/2019
+   created by Leandro Marques at 02/2021
    e-mail: marquesleandro67@gmail.com
-   Gesar Search Group
-   State University of the Rio de Janeiro
-   ======================================
+   COPPE/Departament of Mechanical Engineering
+   Federal University of the Rio de Janeiro
+   ===========================================
   ''' %sys.argv[0]
  
  
@@ -575,7 +552,7 @@ for t in tqdm(range(1, nt)):
      # Applying vx condition
      start_xVelocityBC_time = time()
      xVelocityLHS0 = sps.lil_matrix.copy(M)
-     xVelocityBC = benchmarkProblems.linearStent(numPhysical,numNodes,x,y)
+     xVelocityBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
      xVelocityBC.xVelocityCondition(boundaryEdges,xVelocityLHS0,neighborsNodes)
      benchmark_problem = xVelocityBC.benchmark_problem
      end_xVelocityBC_time = time()
@@ -586,7 +563,7 @@ for t in tqdm(range(1, nt)):
      # Applying vy condition
      start_yVelocityBC_time = time()
      yVelocityLHS0 = sps.lil_matrix.copy(M)
-     yVelocityBC = benchmarkProblems.linearStent(numPhysical,numNodes,x,y)
+     yVelocityBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
      yVelocityBC.yVelocityCondition(boundaryEdges,yVelocityLHS0,neighborsNodes)
      end_yVelocityBC_time = time()
      yVelocityBC_time = end_yVelocityBC_time - start_yVelocityBC_time
@@ -595,20 +572,15 @@ for t in tqdm(range(1, nt)):
  
  
      
-     # Applying psi condition
-     start_streamfunctionBC_time = time()
-     streamFunctionLHS0 = sps.lil_matrix.copy(Kxx) + sps.lil_matrix.copy(Kyy)
-     streamFunctionBC = benchmarkProblems.linearStent(numPhysical,numNodes,x,y)
-     streamFunctionBC.streamFunctionCondition(boundaryEdges,streamFunctionLHS0,neighborsNodes)
-     end_streamfunctionBC_time = time()
-     streamfunctionBC_time = end_streamfunctionBC_time - start_streamfunctionBC_time
-     print ' streamfunction BC: %.1f seconds' %streamfunctionBC_time
+     # Applying pressure condition
+     start_pressureBC_time = time()
+     pressureLHS0 = sps.lil_matrix.copy(Kxx) + sps.lil_matrix.copy(Kyy)
+     pressureBC = benchmarkProblems.linearPressure(numPhysical,numNodes,x,y)
+     pressureBC.pressureCondition(boundaryEdges,streamFunctionLHS0,neighborsNodes)
+     end_pressureBC_time = time()
+     pressureBC_time = end_pressureBC_time - start_pressureBC_time
+     print ' pressure BC: %.1f seconds' %pressureBC_time
  
- 
- 
-    
-     # Applying vorticity condition
-     vorticityDirichletNodes = boundaryNodes
  
  
     
@@ -700,11 +672,11 @@ for t in tqdm(range(1, nt)):
 
    # Linear Element   
    if polynomial_option == 0 or polynomial_option == 1:
-    w_d, c_d = semiLagrangian.Linear2D(numNodes, neighborsElements, IEN, x, y, vxALE, vyALE, dt, w, c)
+    vx_d, vx_d = semiLagrangian.Linear2D(numNodes, neighborsElements, IEN, x, y, vxALE, vyALE, dt, vx, vy)
 
    # Mini Element   
    elif polynomial_option == 2:
-    w_d = semiLagrangian.Mini2D(numNodes, neighborsElements, IEN, z, r, vz, vr, dt, w)
+    vx_d, vx_d = semiLagrangian.Mini2D(numNodes, neighborsElements, IEN, x, y, vxALE, vyALE, dt, vx, vy)
  
    # Quad Element   
    elif polynomial_option == 3:
@@ -728,95 +700,6 @@ for t in tqdm(range(1, nt)):
 
  
 
- 
-  #---------- Step 2 - Compute the boundary conditions for vorticity --------------
-  start_vorticityBC_time = time()
-  vorticityRHS = sps.lil_matrix.dot(Gx,vy) - sps.lil_matrix.dot(Gy,vx)
-  vorticityLHS = sps.lil_matrix.copy(M)
-  vorticityAux1BC = scipy.sparse.linalg.cg(vorticityLHS,vorticityRHS,vorticityAux1BC, maxiter=1.0e+05, tol=1.0e-05)
-  vorticityAux1BC = vorticityAux1BC[0].reshape((len(vorticityAux1BC[0]),1))
-
-
-  if polynomial_option == 0 or polynomial_option == 1: #Linear
-   for i in range(0,len(boundaryEdges)):
-    line = boundaryEdges[i][0]
-    v1 = boundaryEdges[i][1] - 1
-    v2 = boundaryEdges[i][2] - 1
-
-    if line == 4: #vorticity null forced
-     vorticityAux1BC[v1] = 0.0
-     vorticityAux1BC[v2] = 0.0
- 
-
-  elif polynomial_option == 3: #Quad
-   for i in range(0,len(boundaryEdges)):
-    line = boundaryEdges[i][0]
-    v1 = boundaryEdges[i][1] - 1
-    v2 = boundaryEdges[i][2] - 1
-    v3 = boundaryEdges[i][3] - 1
-
-    if line == 4: #vorticity null forced
-     vorticityAux1BC[v1] = 0.0
-     vorticityAux1BC[v2] = 0.0
-     vorticityAux1BC[v3] = 0.0
- 
- 
-  # Gaussian elimination
-  vorticityDirichletVector = np.zeros([numNodes,1], dtype = float)
-  vorticityNeumannVector = np.zeros([numNodes,1], dtype = float)
-  vorticityAux2BC = np.ones([numNodes,1], dtype = float)
- 
-  vorticityLHS = (np.copy(M)/dt) + (1.0/Re)*np.copy(Kxx) + (1.0/Re)*np.copy(Kyy)
-  for mm in vorticityDirichletNodes:
-   for nn in neighborsNodes[mm]:
-    vorticityDirichletVector[nn] -= float(vorticityLHS[nn,mm]*vorticityAux1BC[mm])
-    vorticityLHS[nn,mm] = 0.0
-    vorticityLHS[mm,nn] = 0.0
-    
-   vorticityLHS[mm,mm] = 1.0
-   vorticityDirichletVector[mm] = vorticityAux1BC[mm]
-   vorticityAux2BC[mm] = 0.0
-
-  end_vorticityBC_time = time()
-  vorticityBC_time = end_vorticityBC_time - start_vorticityBC_time
-  print ' Vorticity BC: %.1f seconds' %vorticityBC_time
-  #----------------------------------------------------------------------------------
- 
- 
- 
-  #---------- Step 3 - Solve the vorticity transport equation ----------------------
-  start_vorticitysolver_time = time()
-  # Taylor Galerkin Scheme
-  if scheme_option == 1:
-   A = np.copy(M)/dt 
-   vorticityRHS = sps.lil_matrix.dot(A,w) - np.multiply(vx,sps.lil_matrix.dot(Gx,w))\
-         - np.multiply(vy,sps.lil_matrix.dot(Gy,w))\
-         - (dt/2.0)*np.multiply(vx,(np.multiply(vx,sps.lil_matrix.dot(Kxx,w)) + np.multiply(vy,sps.lil_matrix.dot(Kyx,w))))\
-         - (dt/2.0)*np.multiply(vy,(np.multiply(vx,sps.lil_matrix.dot(Kxy,w)) + np.multiply(vy,sps.lil_matrix.dot(Kyy,w))))
-   vorticityRHS = np.multiply(vorticityRHS,vorticityAux2BC)
-   vorticityRHS = vorticityRHS + vorticityDirichletVector
-   w = scipy.sparse.linalg.cg(vorticityLHS,vorticityRHS,w, maxiter=1.0e+05, tol=1.0e-05)
-   w = w[0].reshape((len(w[0]),1))
- 
-
-  # semi-Lagrangian Scheme
-  elif scheme_option == 2:
-   A = np.copy(M)/dt
-   vorticityRHS = sps.lil_matrix.dot(A,w_d)
- 
-   vorticityRHS = vorticityRHS + (1.0/Re)*vorticityNeumannVector
-   vorticityRHS = np.multiply(vorticityRHS,vorticityAux2BC)
-   vorticityRHS = vorticityRHS + vorticityDirichletVector
- 
-   w = scipy.sparse.linalg.cg(vorticityLHS,vorticityRHS,w, maxiter=1.0e+05, tol=1.0e-05)
-   w = w[0].reshape((len(w[0]),1))
- 
-  end_vorticitysolver_time = time()
-  vorticitysolver_time = end_vorticitysolver_time - start_vorticitysolver_time
-  print ' Vorticity Solver: %.1f seconds' %vorticitysolver_time
-  #----------------------------------------------------------------------------------
- 
- 
  
   #---------- Step 4 - Solve the streamline equation --------------------------------
   # Solve Streamline
