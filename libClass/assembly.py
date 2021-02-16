@@ -304,7 +304,7 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
 
 
  element2D = gaussianQuadrature.Element2D(_x, _y, _IEN, _GAUSSPOINTS)
-i
+
  #obsolete
  if _simulation_option == 1:
   if _polynomial_option == 1:

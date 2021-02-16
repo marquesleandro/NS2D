@@ -153,7 +153,7 @@ start_time = time()
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
  #mshFileName = 'linearHalfPoiseuille.msh'
  #mshFileName = 'linearStraightGeo.msh'
- mshFileName = 'linearCurvedGeoStrut1.msh'
+ mshFileName = 'poiseuille.msh'
 
  pathMSHFile = searchMSH.Find(mshFileName)
  if pathMSHFile == 'File not found':
@@ -279,7 +279,26 @@ print ' ASSEMBLY:'
 print ' ---------'
 
 start_time = time()
-Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.Element2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
+Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.NS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
+
+#scipy
+#G = np.block([[Gx],
+#              [Gy]])
+#
+#D = G.transpose()
+#
+#Z = np.zeros([numVerts,numVerts], dtype=float)
+#
+#A = sps.bmat([[(M/dt)+(Kxx+Kyy), G],              # [ (M/dt) + K             Gx]
+#              [-D              , Z]]).toarray()   # [            (M/dt) + K  Gy]
+#                                                  # [     Dx          Dy     0 ]
+
+#numpy
+Kxx = Kxx.todense()
+Kyy = Kyy.todense()
+M = M.todense()
+Gx = Gx.todense()
+Gy = Gy.todense()
 
 G = np.block([[Gx],
               [Gy]])
@@ -287,8 +306,12 @@ G = np.block([[Gx],
 D = G.transpose()
 
 Z = np.zeros([numVerts,numVerts], dtype=float)
-A = np.block([[(M/dt)+(Kxx+Kyy), G],
-              [      -D        , Z]])
+
+A = np.block([[(M/dt)+(Kxx+Kyy), G],              # [ (M/dt) + K             Gx]
+              [-D              , Z]])             # [            (M/dt) + K  Gy]
+                                                  # [     Dx          Dy     0 ]
+
+
 
 
 end_time = time()
@@ -312,26 +335,27 @@ start_time = time()
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
 
  # Applying vx condition
- xVelocityLHS0 = sps.lil_matrix.copy(M)
- xVelocityBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
- xVelocityBC.xVelocityCondition(boundaryEdges,xVelocityLHS0,neighborsNodes)
+ xVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,x,y)
+ xVelocityBC.xVelocityCondition(boundaryEdgesneighborsNodes)
  benchmark_problem = xVelocityBC.benchmark_problem
 
  # Applying vy condition
- yVelocityLHS0 = sps.lil_matrix.copy(M)
- yVelocityBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
- yVelocityBC.yVelocityCondition(boundaryEdges,yVelocityLHS0,neighborsNodes)
+ yVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,x,y)
+ yVelocityBC.yVelocityCondition(boundaryEdges,neighborsNodes)
  
  # Applying pressure condition
- pressureLHS0 = sps.lil_matrix.copy(Kxx) + sps.lil_matrix.copy(Kyy)
- pressureBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
- pressureBC.pressureCondition(boundaryEdges,streamFunctionLHS0,neighborsNodes)
+ pressureBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,x,y)
+ pressureBC.pressureCondition(boundaryEdges,neighborsNodes)
 
  # Applying concentration condition
- concentrationLHS0 = (sps.lil_matrix.copy(M)/dt) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kxx) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kyy)
- concentrationBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
- concentrationBC.concentrationCondition(boundaryEdges,concentrationLHS0,neighborsNodes)
+ #concentrationLHS0 = (sps.lil_matrix.copy(M)/dt) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kxx) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kyy)
+ #concentrationBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
+ #concentrationBC.concentrationCondition(boundaryEdges,concentrationLHS0,neighborsNodes)
 
+ # Applying Gaussian Elimination
+ gaussianElimination = benchmarkProblems.NS2D(numPhysical, numNodes)
+ gaussianElimination.gaussianElimination(A, xVelocityBC.dirichletNodes, yVelocityBC.dirichletNodes, pressureBC.dirichletNodes, neighborsNodes, xVelocityBC.aux1BC, yVelocityBC.aux1BC, pressureBC.aux1BC)
+ LHS = gaussianElimination.LHS
 
 # Quad Element
 elif polynomial_option == 3:
@@ -373,6 +397,8 @@ if import_option == 0:
  vy = np.copy(yVelocityBC.aux1BC)
  p = np.copy(pressureBC.aux1BC)
  c = np.copy(concentrationBC.aux1BC)
+ sol = np.append(vx,vy)
+ sol = np.append(sol,p)
  # ---------------------------------------------------------------------------------
  
  end_time = time()
@@ -681,11 +707,11 @@ for t in tqdm(range(1, nt)):
 
    # Linear Element   
    if polynomial_option == 0 or polynomial_option == 1:
-    vx_d, vx_d = semiLagrangian.Linear2D(numNodes, neighborsElements, IEN, x, y, vxALE, vyALE, dt, vx, vy)
+    vx_d, vy_d = semiLagrangian.Linear2D(numNodes, neighborsElements, IEN, x, y, vxALE, vyALE, dt, vx, vy)
 
    # Mini Element   
    elif polynomial_option == 2:
-    vx_d, vx_d = semiLagrangian.Mini2D(numNodes, neighborsElements, IEN, x, y, vxALE, vyALE, dt, vx, vy)
+    vx_d, vy_d = semiLagrangian.Mini2D(numNodes, neighborsElements, IEN, x, y, vxALE, vyALE, dt, vx, vy)
  
    # Quad Element   
    elif polynomial_option == 3:
@@ -715,11 +741,15 @@ for t in tqdm(range(1, nt)):
   # psi condition
   start_streamfunctionsolver_time = time()
 
-  streamFunctionRHS = sps.lil_matrix.dot(M,w)
-  streamFunctionRHS = np.multiply(streamFunctionRHS,streamFunctionBC.aux2BC)
-  streamFunctionRHS = streamFunctionRHS + streamFunctionBC.dirichletVector
-  psi = scipy.sparse.linalg.cg(streamFunctionBC.LHS,streamFunctionRHS,psi, maxiter=1.0e+05, tol=1.0e-05)
-  psi = psi[0].reshape((len(psi[0]),1))
+  RHS = sps.lil_matrix.dot((M/dt),np.append(vx,vy))
+  RHS = np.multiply(RHS,streamFunctionBC.aux2BC)
+  RHS = RHS + gaussianElimination.dirichletVector
+  sol = scipy.sparse.linalg.cg(LHS,RHS,sol, maxiter=1.0e+05, tol=1.0e-05)
+  sol = psi[0].reshape((len(sol[0]),1))
+
+  vx = sol[0:numNodes]
+  vy = sol[numNodes:2*numNodes]
+  p  = sol[2*numNodes:]
 
   end_streamfunctionsolver_time = time()
   streamfunctionsolver_time = end_streamfunctionsolver_time - start_streamfunctionsolver_time
@@ -727,67 +757,39 @@ for t in tqdm(range(1, nt)):
   #----------------------------------------------------------------------------------
  
  
- 
-  #---------- Step 5 - Compute the velocity field -----------------------------------
-  start_velocitysolver_time = time()
-
-  # Velocity vx
-  vx_old = np.copy(vx)
-  xVelocityRHS = sps.lil_matrix.dot(Gy,psi)
-  xVelocityRHS = np.multiply(xVelocityRHS,xVelocityBC.aux2BC)
-  xVelocityRHS = xVelocityRHS + xVelocityBC.dirichletVector
-  vx = scipy.sparse.linalg.cg(xVelocityBC.LHS,xVelocityRHS,vx, maxiter=1.0e+05, tol=1.0e-05)
-  vx = vx[0].reshape((len(vx[0]),1))
-  
-  # Velocity vy
-  vy_old = np.copy(vy)
-  yVelocityRHS = -sps.lil_matrix.dot(Gx,psi)
-  yVelocityRHS = np.multiply(yVelocityRHS,yVelocityBC.aux2BC)
-  yVelocityRHS = yVelocityRHS + yVelocityBC.dirichletVector
-  vy = scipy.sparse.linalg.cg(yVelocityBC.LHS,yVelocityRHS,vy, maxiter=1.0e+05, tol=1.0e-05)
-  vy = vy[0].reshape((len(vy[0]),1))
-
-  end_velocitysolver_time = time()
-  velocitysolver_time = end_velocitysolver_time - start_velocitysolver_time
-  print ' Velocity Solver: %.1f seconds' %velocitysolver_time
-  #----------------------------------------------------------------------------------
- 
-
-
-  
 
   #---------- Step 7 - Solve the specie transport equation ----------------------
-  start_concentrationsolver_time = time()
+  #start_concentrationsolver_time = time()
 
-  c_old = np.copy(c)
-  # Taylor Galerkin Scheme
-  if scheme_option == 1:
-   A = np.copy(M)/dt 
-   concentrationRHS = sps.lil_matrix.dot(A,c) - np.multiply(vx,sps.lil_matrix.dot(Gx,c))\
-         - np.multiply(vy,sps.lil_matrix.dot(Gy,c))\
-         - (dt/2.0)*np.multiply(vx,(np.multiply(vx,sps.lil_matrix.dot(Kxx,c)) + np.multiply(vy,sps.lil_matrix.dot(Kyx,c))))\
-         - (dt/2.0)*np.multiply(vy,(np.multiply(vx,sps.lil_matrix.dot(Kxy,c)) + np.multiply(vy,sps.lil_matrix.dot(Kyy,c))))
-   concentrationRHS = np.multiply(concentrationRHS,concentrationBC.aux2BC)
-   concentrationRHS = concentrationRHS + concentrationBC.dirichletVector
-   c = scipy.sparse.linalg.cg(concentrationBC.LHS,concentrationRHS,c, maxiter=1.0e+05, tol=1.0e-05)
-   c = c[0].reshape((len(c[0]),1))
+  #c_old = np.copy(c)
+  ## Taylor Galerkin Scheme
+  #if scheme_option == 1:
+  # A = np.copy(M)/dt 
+  # concentrationRHS = sps.lil_matrix.dot(A,c) - np.multiply(vx,sps.lil_matrix.dot(Gx,c))\
+  #       - np.multiply(vy,sps.lil_matrix.dot(Gy,c))\
+  #       - (dt/2.0)*np.multiply(vx,(np.multiply(vx,sps.lil_matrix.dot(Kxx,c)) + np.multiply(vy,sps.lil_matrix.dot(Kyx,c))))\
+  #       - (dt/2.0)*np.multiply(vy,(np.multiply(vx,sps.lil_matrix.dot(Kxy,c)) + np.multiply(vy,sps.lil_matrix.dot(Kyy,c))))
+  # concentrationRHS = np.multiply(concentrationRHS,concentrationBC.aux2BC)
+  # concentrationRHS = concentrationRHS + concentrationBC.dirichletVector
+  # c = scipy.sparse.linalg.cg(concentrationBC.LHS,concentrationRHS,c, maxiter=1.0e+05, tol=1.0e-05)
+  # c = c[0].reshape((len(c[0]),1))
  
  
  
-  # Semi-Lagrangian Scheme
-  elif scheme_option == 2:
-   A = np.copy(M)/dt
-   concentrationRHS = sps.lil_matrix.dot(A,c_d)
+  ## Semi-Lagrangian Scheme
+  #elif scheme_option == 2:
+  # A = np.copy(M)/dt
+  # concentrationRHS = sps.lil_matrix.dot(A,c_d)
  
-   concentrationRHS = np.multiply(concentrationRHS,concentrationBC.aux2BC)
-   concentrationRHS = concentrationRHS + concentrationBC.dirichletVector
+  # concentrationRHS = np.multiply(concentrationRHS,concentrationBC.aux2BC)
+  # concentrationRHS = concentrationRHS + concentrationBC.dirichletVector
  
-   c = scipy.sparse.linalg.cg(concentrationBC.LHS,concentrationRHS, c, maxiter=1.0e+05, tol=1.0e-05)
-   c = c[0].reshape((len(c[0]),1))
+  # c = scipy.sparse.linalg.cg(concentrationBC.LHS,concentrationRHS, c, maxiter=1.0e+05, tol=1.0e-05)
+  # c = c[0].reshape((len(c[0]),1))
 
-  end_concentrationsolver_time = time()
-  concentrationsolver_time = end_concentrationsolver_time - start_concentrationsolver_time
-  print ' Concentration Solver: %.1f seconds' %concentrationsolver_time
+  #end_concentrationsolver_time = time()
+  #concentrationsolver_time = end_concentrationsolver_time - start_concentrationsolver_time
+  #print ' Concentration Solver: %.1f seconds' %concentrationsolver_time
   #----------------------------------------------------------------------------------
  
 
@@ -806,7 +808,7 @@ for t in tqdm(range(1, nt)):
 
   # Linear and Mini Elements
   if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:   
-   save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,w,psi,c,vx,vy)
+   save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,p,p,c,vx,vy)
    save.create_dir(folderResults)
    save.saveVTK(folderResults + str(t))
  

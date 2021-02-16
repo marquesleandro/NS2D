@@ -453,6 +453,10 @@ class Mini2D:
   for i in range(0, _self.numVerts):  
    _self.x[i] = _self.mshFile[_self.numPhysical + 8 + i][1]
    _self.y[i] = _self.mshFile[_self.numPhysical + 8 + i][2]
+
+  # if ALE approach is wrong, check this item
+  # consider update from numNodes to numVerts
+  for i in range(0, _self.numNodes):
    _self.neighborsNodes[i] = []
    _self.neighborsNodesALE[i] = []
    _self.neighborsElements[i] = []
@@ -462,7 +466,7 @@ class Mini2D:
 
   # IEN matrix and Neighbors list Assembly
   _self.IEN = np.zeros([_self.numElements,4], dtype = int)
-  _self.velociyFreedomDegree = len(_self.IEN[0,:])
+  _self.velocityFreedomDegree = len(_self.IEN[0,:])
   _self.pressureFreedomDegree = len(_self.IEN[0,:]-1)
   length = []
 

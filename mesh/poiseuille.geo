@@ -24,10 +24,9 @@ Line(6)={6,1};
 Line Loop(11) = {3, 4, 5, 6, 1, 2};
 Plane Surface(11) = {11};
 
-Physical Line("noslip") = {1,3};
+Physical Line("noslip") = {1,3,5};
 Physical Line("outflow") = {4};
 Physical Line("inflow") = {6};
-Physical Line("symmetry") = {5};
 Physical Line("stent") = {2};
 
 Physical Surface(11) = {11};

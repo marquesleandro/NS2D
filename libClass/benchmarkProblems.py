@@ -1299,29 +1299,7 @@ class quadHalfPoiseuille:
 
 
 
-class linearPoiseuille:
-
- # ------------------------------------------------------------------------------------------------------
- # Use:
-
- # # Applying vx condition
- # condition_xvelocity = bc_apply.Half_Poiseuille(mesh.nphysical,mesh.npoints,mesh.x,mesh.y)
- # condition_xvelocity.neumann_condition(mesh.neumann_edges[1])
- # condition_xvelocity.dirichlet_condition(mesh.dirichlet_pts[1])
- # condition_xvelocity.gaussian_elimination(LHS_vx0,mesh.neighbors_nodes)
- # vorticity_ibc = condition_xvelocity.ibc
-
- # # Applying vy condition
- # condition_yvelocity = bc_apply.Half_Poiseuille(mesh.nphysical,mesh.npoints,mesh.x,mesh.y)
- # condition_yvelocity.neumann_condition(mesh.neumann_edges[2])
- # condition_yvelocity.dirichlet_condition(mesh.dirichlet_pts[2])
- # condition_yvelocity.gaussian_elimination(LHS_vy0,mesh.neighbors_nodes)
-
- # # Applying psi condition
- # condition_streamfunction = bc_apply.Half_Poiseuille(mesh.nphysical,mesh.npoints,mesh.x,mesh.y)
- # condition_streamfunction.streamfunction_condition(mesh.dirichlet_pts[3],LHS_psi0,mesh.neighbors_nodes)
- # ------------------------------------------------------------------------------------------------------
-
+class NS2DPoiseuille:
 
  def __init__(_self, _numPhysical, _numNodes, _x, _y):
   _self.numPhysical = _numPhysical
@@ -1333,12 +1311,9 @@ class linearPoiseuille:
   _self.benchmark_problem = 'linear Poiseuille'
 
 
- def xVelocityCondition(_self, _boundaryEdges, _LHS0, _neighborsNodes):
-  _self.dirichletVector = np.zeros([_self.numNodes,1], dtype = float) 
+ def xVelocityCondition(_self, _boundaryEdges, _neighborsNodes):
   _self.dirichletNodes = [] 
   _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
-  _self.aux2BC = np.ones([_self.numNodes,1], dtype = float) 
-  _self.LHS = sps.lil_matrix.copy(_LHS0)
   _self.boundaryEdges = _boundaryEdges
   _self.neighborsNodes = _neighborsNodes
 
@@ -1349,7 +1324,7 @@ class linearPoiseuille:
    v2 = _self.boundaryEdges[i][2] - 1
 
    # Noslip 
-   if line == 1 or line == 4:
+   if line == 1:
     _self.aux1BC[v1] = 0.0
     _self.aux1BC[v2] = 0.0
  
@@ -1367,26 +1342,10 @@ class linearPoiseuille:
   _self.dirichletNodes = np.unique(_self.dirichletNodes)
 
 
-  # Gaussian elimination for vx
-  for mm in _self.dirichletNodes:
-   for nn in _self.neighborsNodes[mm]:
-    _self.dirichletVector[nn] -= float(_self.LHS[nn,mm]*_self.aux1BC[mm])
-    _self.LHS[nn,mm] = 0.0
-    _self.LHS[mm,nn] = 0.0
-   
-   _self.LHS[mm,mm] = 1.0
-   _self.dirichletVector[mm] = _self.aux1BC[mm]
-   _self.aux2BC[mm] = 0.0
- 
 
-
-
- def yVelocityCondition(_self, _boundaryEdges, _LHS0, _neighborsNodes):
-  _self.dirichletVector = np.zeros([_self.numNodes,1], dtype = float) 
+ def yVelocityCondition(_self, _boundaryEdges, _neighborsNodes):
   _self.dirichletNodes = [] 
   _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
-  _self.aux2BC = np.ones([_self.numNodes,1], dtype = float) 
-  _self.LHS = sps.lil_matrix.copy(_LHS0)
   _self.boundaryEdges = _boundaryEdges
   _self.neighborsNodes = _neighborsNodes
 
@@ -1397,7 +1356,7 @@ class linearPoiseuille:
    v2 = _self.boundaryEdges[i][2] - 1
 
    # Noslip 
-   if line == 1 or line == 4:
+   if line == 1:
     _self.aux1BC[v1] = 0.0
     _self.aux1BC[v2] = 0.0
  
@@ -1415,25 +1374,10 @@ class linearPoiseuille:
   _self.dirichletNodes = np.unique(_self.dirichletNodes)
 
 
-  # Gaussian elimination for vy
-  for mm in _self.dirichletNodes:
-   for nn in _self.neighborsNodes[mm]:
-    _self.dirichletVector[nn] -= float(_self.LHS[nn,mm]*_self.aux1BC[mm])
-    _self.LHS[nn,mm] = 0.0
-    _self.LHS[mm,nn] = 0.0
-   
-   _self.LHS[mm,mm] = 1.0
-   _self.dirichletVector[mm] = _self.aux1BC[mm]
-   _self.aux2BC[mm] = 0.0
- 
 
-
- def pressureCondition(_self, _boundaryEdges, _LHS0, _neighborsNodes):
-  _self.dirichletVector = np.zeros([_self.numNodes,1], dtype = float) 
+ def pressureCondition(_self, _boundaryEdges, _neighborsNodes):
   _self.dirichletNodes = [] 
   _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
-  _self.aux2BC = np.ones([_self.numNodes,1], dtype = float) 
-  _self.LHS = sps.lil_matrix.copy(_LHS0)
   _self.boundaryEdges = _boundaryEdges
   _self.neighborsNodes = _neighborsNodes
 
@@ -1455,17 +1399,6 @@ class linearPoiseuille:
   _self.dirichletNodes = np.unique(_self.dirichletNodes)
 
 
-  # Gaussian elimination for pressure
-  for mm in _self.dirichletNodes:
-   for nn in _self.neighborsNodes[mm]:
-    _self.dirichletVector[nn] -= float(_self.LHS[nn,mm]*_self.aux1BC[mm])
-    _self.LHS[nn,mm] = 0.0
-    _self.LHS[mm,nn] = 0.0
-   
-   _self.LHS[mm,mm] = 1.0
-   _self.dirichletVector[mm] = _self.aux1BC[mm]
-   _self.aux2BC[mm] = 0.0
- 
 
  def concentrationCondition(_self, _boundaryEdges, _LHS0, _neighborsNodes):
   _self.dirichletVector = np.zeros([_self.numNodes,1], dtype = float) 
@@ -1483,7 +1416,7 @@ class linearPoiseuille:
    v2 = _self.boundaryEdges[i][2] - 1
 
    # Stent
-   if line == 1:
+   if line == 4:
     _self.aux1BC[v1] = 1.0
     _self.aux1BC[v2] = 1.0
  
@@ -1778,6 +1711,69 @@ class Convection1D:
 
 
 
+
+
+class NS2D:
+
+
+ def __init__(_self, _numPhysical, _numNodes):
+  _self.numPhysical = _numPhysical
+  _self.numNodes = _numNodes
+
+
+ def gaussianElimination(_self, _LHS0, _dirichletNodesVx, _dirichletNodesVy, _dirichletNodesPressure, _neighborsNodes, _aux1BCVx, _aux1BCVy, _aux1BCPressure):
+  _self.dirichletNodesVx = _dirichletNodesVx 
+  _self.dirichletNodesVy = _dirichletNodesVy 
+  _self.dirichletNodesPressure = _dirichletNodesPressure
+  _self.aux1BCVx = _aux1BCVx
+  _self.aux1BCVy = _aux1BCVy
+  _self.aux1BCPressute = _aux1BCPressure
+  _self.LHS = sps.lil_matrix.copy(_LHS0)
+  _self.neighborsNodes = _neighborsNodes
+  _self.dirichletVector = np.zeros([2*_self.numNodes + _self.numVerts,1], dtype = float) 
+  _self.aux2BC = np.ones([2*_self.numNodes + _self.numVerts,1], dtype = float) 
+
+
+
+  # Gaussian elimination for vx
+  for mm in _self.dirichletNodesVx:
+   for nn in _self.neighborsNodes[mm]:
+    _self.dirichletVector[nn] -= float(_self.LHS[nn,mm]*_self.aux1BCVx[mm])
+    _self.LHS[nn,mm] = 0.0
+    _self.LHS[mm,nn] = 0.0
+
+   _self.LHS[mm,mm] = 1.0
+   _self.dirichletVector[mm] = _self.aux1BCVx[mm]
+   _self.aux2BC[mm] = 0.0
+
+
+
+
+  # Gaussian elimination for vy
+  for mm in _self.dirichletNodesVy:
+   for nn in _self.neighborsNodes[mm]:
+    _self.dirichletVector[nn + _self.numNodes] -= float(_self.LHS[nn + _self.numNodes,mm + _self.numNodes]*_self.aux1BCVy[mm])
+    _self.LHS[nn + _self.numNodes,mm + _self.numNodes] = 0.0
+    _self.LHS[mm + _self.numNodes,nn + _self.numNodes] = 0.0
+   
+   _self.LHS[mm + _self.numNodes,mm + _self.numNodes] = 1.0
+   _self.dirichletVector[mm + _self.numNodes] = _self.aux1BCVy[mm]
+   _self.aux2BC[mm + _self.numNodes] = 0.0
+
+
+
+
+
+  # Gaussian elimination for pressure
+  for mm in _self.dirichletNodesPressure:
+   for nn in _self.neighborsNodes[mm]:
+    _self.dirichletVector[nn + 2*_self.numNodes] -= float(_self.LHS[nn + 2*_self.numNodes,mm + 2*_self.numNodes]*_self.aux1BCPressure[mm])
+    _self.LHS[nn + 2*_self.numNodes,mm + 2*_self.numNodes] = 0.0
+    _self.LHS[mm + 2*_self.numNodes,nn + 2*_self.numNodes] = 0.0
+   
+   _self.LHS[mm + 2*_self.numNodes,mm + 2*_self.numNodes] = 1.0
+   _self.dirichletVector[mm + 2*_self.numNodes] = _self.aux1BCPressure[mm]
+   _self.aux2BC[mm + 2*_self.numNodes] = 0.0
 
 
 
