@@ -335,7 +335,8 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
    polynomial_order = 'Mini Element'
  
    for e in tqdm(range(0, _numElements)):
-    element2D.mini(e)
+    #element2D.mini(e)         # gaussian quadrature
+    element2D.analyticMini(e)  # analytic elementary matrix
  
     for i in range(0,_velocityFD): 
      ii = _IEN[e][i]
@@ -354,6 +355,8 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
  
 
      for j in range(0,_pressureFD):
+      jj = _IEN[e][j]
+     
       Gx[ii,jj] += element2D.gx[i][j]
       Gy[ii,jj] += element2D.gy[i][j]
  
@@ -414,7 +417,7 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
    polynomial_order = 'Analytic Linear Element'
    
    for e in tqdm(range(0, _nelem)):
-    element2D.analytic(e)
+    element2D.analyticLinear(e)
  
     for i in range(0,_GL): 
      ii = _IEN[e][i]

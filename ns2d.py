@@ -279,6 +279,7 @@ print ' ---------'
 print ' ASSEMBLY:'
 print ' ---------'
 
+
 start_time = time()
 Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.NS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
 
@@ -297,9 +298,9 @@ Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.NS2D(simula
 #numpy
 Kxx = Kxx.todense()
 Kyy = Kyy.todense()
-M = M.todense()
-Gx = Gx.todense()
-Gy = Gy.todense()
+M   = M.todense()
+Gx  = Gx.todense()
+Gy  = Gy.todense()
 
 G = np.block([[Gx],
               [Gy]])
@@ -336,16 +337,16 @@ start_time = time()
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
 
  # Applying vx condition
- xVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,x,y)
+ xVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
  xVelocityBC.xVelocityCondition(boundaryEdges,neighborsNodes)
  benchmark_problem = xVelocityBC.benchmark_problem
 
  # Applying vy condition
- yVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,x,y)
+ yVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
  yVelocityBC.yVelocityCondition(boundaryEdges,neighborsNodes)
  
  # Applying pressure condition
- pressureBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,x,y)
+ pressureBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
  pressureBC.pressureCondition(boundaryEdges,neighborsNodesPressure)
 
  # Applying concentration condition
@@ -398,8 +399,7 @@ if import_option == 0:
  vy = np.copy(yVelocityBC.aux1BC)
  p = np.copy(pressureBC.aux1BC)
  #c = np.copy(concentrationBC.aux1BC)
- sol = np.append(vx,vy)
- sol = np.append(sol,p)
+ sol = np.concatenate((vx, vy, p), axis=0)
  # ---------------------------------------------------------------------------------
  
  end_time = time()
@@ -462,7 +462,7 @@ os.chdir(initial_path)
 # ------------------------ Export VTK File ---------------------------------------
 # Linear and Mini Elements
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:   
- save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,p,p,p,vx,vy)
+ save = exportVTK.Linear2D(x,y,IEN,numVerts,numElements,p,p,p,vx,vy)
  save.create_dir(folderResults)
  save.saveVTK(folderResults + str(0))
 
@@ -748,8 +748,21 @@ for t in tqdm(range(1, nt)):
   #RHS = RHS + gaussianElimination.dirichletVector
   #sol = scipy.sparse.linalg.cg(LHS,RHS,sol, maxiter=1.0e+05, tol=1.0e-05)
   #sol = psi[0].reshape((len(sol[0]),1))
+ 
+  print np.shape((M/dt))
+  print np.shape(np.concatenate((vx,vy),axis=0))
+  print np.shape(np.concatenate((np.concatenate((vx,vy),axis=0),p),axis=0))
+  print np.shape(gaussianElimination.aux2BC)
+  print numNodes
+  print numVerts
+  print 2*numNodes + numVerts
+  print np.shape(vx)
+  print np.shape(vy)
+  print np.shape(p)
 
-  RHS = np.dot((M/dt),np.append(vx,vy))
+ 
+  RHS = np.dot((M/dt),np.concatenate((vx,vy),axis=0))
+  RHS = np.concatenate((RHS,p),axis=0)
   RHS = np.multiply(RHS,gaussianElimination.aux2BC)
   RHS = RHS + gaussianElimination.dirichletVector
   sol = np.linalg.solve(LHS,RHS)
@@ -815,7 +828,7 @@ for t in tqdm(range(1, nt)):
 
   # Linear and Mini Elements
   if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:   
-   save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,p,p,p,vx,vy)
+   save = exportVTK.Linear2D(x,y,IEN,numVerts,numElements,p,p,p,vx,vy)
    save.create_dir(folderResults)
    save.saveVTK(folderResults + str(t))
  

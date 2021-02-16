@@ -1055,7 +1055,7 @@ class Element2D:
  #                     Seetharamu - pg. 196-200
  #                     For Q_elem pg. 126
  #                     For 1D pg. 193
- def analytic(_self, _e):
+ def analyticLinear(_self, _e):
 
   i = _self.IEN[_e][0]
   j = _self.IEN[_e][1]
@@ -1105,8 +1105,147 @@ class Element2D:
                                    [ck*bi,ck*bj,ck*bk]])
 
 
+ def analyticMini(_self, _e):
 
- def axisymmetric(_self, _e):
+  i = _self.IEN[_e][0]
+  j = _self.IEN[_e][1]
+  k = _self.IEN[_e][2]
+
+  bi = _self.y[j]-_self.y[k]
+  bj = _self.y[k]-_self.y[i]
+  bk = _self.y[i]-_self.y[j]
+  ci = _self.x[k]-_self.x[j]
+  cj = _self.x[i]-_self.x[k]
+  ck = _self.x[j]-_self.x[i]
+
+
+  A = 0.5*np.linalg.det(np.array([[1, _self.x[i], _self.y[i]],
+ 				  [1, _self.x[j], _self.y[j]],
+				  [1, _self.x[k], _self.y[k]]]))
+
+
+  zz    = (1.0/(4.0*A))*(bj*bj + bk*bk + bj*bk + cj*cj + ck*ck + cj*ck)
+  zzx   = (1.0/(4.0*A))*(bj*bj + bk*bk + bj*bk)
+  zzy   = (1.0/(4.0*A))*(cj*cj + ck*ck + cj*ck)
+  zzxy  = (1.0/(4.0*A))*(bj*cj + bk*ck + 0.5*bj*ck + 0.5*bk*cj)
+  zzyx  = (1.0/(4.0*A))*(cj*bj + ck*bk + 0.5*cj*bk + 0.5*ck*bj)
+  
+
+
+  _self.mass = (A/840.)*np.array([[83.,13.,13., 45.],
+                                  [13.,83.,13., 45.],
+                                  [13.,13.,83., 45.],
+                                  [45.,45.,45.,243.]])
+
+  _self.q = (A/3.)*np.ones([3,1], dtype = float)
+  
+  _self.gx = (1./6)*np.array([[(11./120)*bi,(11./120)*bj,(11./120)*bk],
+                              [(11./120)*bi,(11./120)*bj,(11./120)*bk],
+                              [(11./120)*bi,(11./120)*bj,(11./120)*bk],
+                              [(9./40)  *bi,(9./40)  *bj,(9./40)  *bk]]) 
+
+  _self.gy = (1./6)*np.array([[(11./120)*ci,(11./120)*cj,(11./120)*ck],
+                              [(11./120)*ci,(11./120)*cj,(11./120)*ck],
+                              [(11./120)*ci,(11./120)*cj,(11./120)*ck],
+                              [(9./40)  *ci,(9./40)  *cj,(9./40)  *ck]]) 
+   
+
+  _self.kxxLinear = (1./(4*A))*np.array([[bi*bi,bi*bj,bi*bk],
+                                         [bj*bi,bj*bj,bj*bk],
+                                         [bk*bi,bk*bj,bk*bk]])
+
+  _self.kyyLinear = (1./(4*A))*np.array([[ci*ci,ci*cj,ci*ck],
+                                         [cj*ci,cj*cj,cj*ck],
+                                         [ck*ci,ck*cj,ck*ck]])
+
+  _self.kxyLinear = (1./(4*A))*np.array([[bi*ci,bi*cj,bi*ck],
+                                         [bj*ci,bj*cj,bj*ck],
+                                         [bk*ci,bk*cj,bk*ck]])
+
+  _self.kyxLinear = (1./(4*A))*np.array([[ci*bi,ci*bj,ci*bk],
+                                         [cj*bi,cj*bj,cj*bk],
+                                         [ck*bi,ck*bj,ck*bk]])
+
+
+  _self.kxx = np.zeros([4,4], dtype = float)
+  _self.kxx[0,0]   = _self.kxxLinear[0][0] + (9./40)*zzx
+  _self.kxx[0,1]   = _self.kxxLinear[0][1] + (9./40)*zzx
+  _self.kxx[0,2]   = _self.kxxLinear[0][2] + (9./40)*zzx
+  _self.kxx[1,0]   = _self.kxxLinear[1][0] + (9./40)*zzx
+  _self.kxx[1,1]   = _self.kxxLinear[1][1] + (9./40)*zzx
+  _self.kxx[1,2]   = _self.kxxLinear[1][2] + (9./40)*zzx
+  _self.kxx[2,0]   = _self.kxxLinear[2][0] + (9./40)*zzx
+  _self.kxx[2,1]   = _self.kxxLinear[2][1] + (9./40)*zzx
+  _self.kxx[2,2]   = _self.kxxLinear[2][2] + (9./40)*zzx
+  _self.kxx[0,3]   = - (27./40)*zzx
+  _self.kxx[1,3]   = - (27./40)*zzx
+  _self.kxx[2,3]   = - (27./40)*zzx
+  _self.kxx[3,0]   = - (27./40)*zzx
+  _self.kxx[3,1]   = - (27./40)*zzx
+  _self.kxx[3,2]   = - (27./40)*zzx
+  _self.kxx[3,3]   = - (81./40)*zzx
+
+  _self.kyy = np.zeros([4,4], dtype = float)
+  _self.kyy[0,0]   = _self.kyyLinear[0][0] + (9./40)*zzy
+  _self.kyy[0,1]   = _self.kyyLinear[0][1] + (9./40)*zzy
+  _self.kyy[0,2]   = _self.kyyLinear[0][2] + (9./40)*zzy
+  _self.kyy[1,0]   = _self.kyyLinear[1][0] + (9./40)*zzy
+  _self.kyy[1,1]   = _self.kyyLinear[1][1] + (9./40)*zzy
+  _self.kyy[1,2]   = _self.kyyLinear[1][2] + (9./40)*zzy
+  _self.kyy[2,0]   = _self.kyyLinear[2][0] + (9./40)*zzy
+  _self.kyy[2,1]   = _self.kyyLinear[2][1] + (9./40)*zzy
+  _self.kyy[2,2]   = _self.kyyLinear[2][2] + (9./40)*zzy
+  _self.kyy[0,3]   = - (27./40)*zzy
+  _self.kyy[1,3]   = - (27./40)*zzy
+  _self.kyy[2,3]   = - (27./40)*zzy
+  _self.kyy[3,0]   = - (27./40)*zzy
+  _self.kyy[3,1]   = - (27./40)*zzy
+  _self.kyy[3,2]   = - (27./40)*zzy
+  _self.kyy[3,3]   = - (81./40)*zzy
+
+  _self.kxy = np.zeros([4,4], dtype = float)
+  _self.kxy[0,0]   = _self.kxyLinear[0][0] + (9./40)*zzxy
+  _self.kxy[0,1]   = _self.kxyLinear[0][1] + (9./40)*zzxy
+  _self.kxy[0,2]   = _self.kxyLinear[0][2] + (9./40)*zzxy
+  _self.kxy[1,0]   = _self.kxyLinear[1][0] + (9./40)*zzxy
+  _self.kxy[1,1]   = _self.kxyLinear[1][1] + (9./40)*zzxy
+  _self.kxy[1,2]   = _self.kxyLinear[1][2] + (9./40)*zzxy
+  _self.kxy[2,0]   = _self.kxyLinear[2][0] + (9./40)*zzxy
+  _self.kxy[2,1]   = _self.kxyLinear[2][1] + (9./40)*zzxy
+  _self.kxy[2,2]   = _self.kxyLinear[2][2] + (9./40)*zzxy
+  _self.kxy[0,3]   = - (27./40)*zzxy
+  _self.kxy[1,3]   = - (27./40)*zzxy
+  _self.kxy[2,3]   = - (27./40)*zzxy
+  _self.kxy[3,0]   = - (27./40)*zzxy
+  _self.kxy[3,1]   = - (27./40)*zzxy
+  _self.kxy[3,2]   = - (27./40)*zzxy
+  _self.kxy[3,3]   = - (81./40)*zzxy
+
+  _self.kyx= np.zeros([4,4], dtype = float)
+  _self.kyx[0,0]   = _self.kyxLinear[0][0] + (9./40)*zzyx
+  _self.kyx[0,1]   = _self.kyxLinear[0][1] + (9./40)*zzyx
+  _self.kyx[0,2]   = _self.kyxLinear[0][2] + (9./40)*zzyx
+  _self.kyx[1,0]   = _self.kyxLinear[1][0] + (9./40)*zzyx
+  _self.kyx[1,1]   = _self.kyxLinear[1][1] + (9./40)*zzyx
+  _self.kyx[1,2]   = _self.kyxLinear[1][2] + (9./40)*zzyx
+  _self.kyx[2,0]   = _self.kyxLinear[2][0] + (9./40)*zzyx
+  _self.kyx[2,1]   = _self.kyxLinear[2][1] + (9./40)*zzyx
+  _self.kyx[2,2]   = _self.kyxLinear[2][2] + (9./40)*zzyx
+  _self.kyx[0,3]   = - (27./40)*zzyx
+  _self.kyx[1,3]   = - (27./40)*zzyx
+  _self.kyx[2,3]   = - (27./40)*zzyx
+  _self.kyx[3,0]   = - (27./40)*zzyx
+  _self.kyx[3,1]   = - (27./40)*zzyx
+  _self.kyx[3,2]   = - (27./40)*zzyx
+  _self.kyx[3,3]   = - (81./40)*zzyx
+
+
+
+
+
+
+
+ def analyticAxisymmetric(_self, _e):
   _self.r = _self.y
   _self.z = _self.x
 

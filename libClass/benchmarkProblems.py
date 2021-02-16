@@ -1301,9 +1301,10 @@ class quadHalfPoiseuille:
 
 class NS2DPoiseuille:
 
- def __init__(_self, _numPhysical, _numNodes, _x, _y):
+ def __init__(_self, _numPhysical, _numNodes, _numVerts, _x, _y):
   _self.numPhysical = _numPhysical
   _self.numNodes = _numNodes
+  _self.numVerts = _numVerts
   _self.x = _x
   _self.y = _y
   _self.maxVx = 3.0/2.0
@@ -1377,7 +1378,7 @@ class NS2DPoiseuille:
 
  def pressureCondition(_self, _boundaryEdges, _neighborsNodes):
   _self.dirichletNodes = [] 
-  _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
+  _self.aux1BC = np.zeros([_self.numVerts,1], dtype = float) #For scipy array solve
   _self.boundaryEdges = _boundaryEdges
   _self.neighborsNodes = _neighborsNodes
 

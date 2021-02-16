@@ -467,7 +467,7 @@ class Mini2D:
   # IEN matrix and Neighbors list Assembly
   _self.IEN = np.zeros([_self.numElements,4], dtype = int)
   _self.velocityFreedomDegree = len(_self.IEN[0,:])
-  _self.pressureFreedomDegree = len(_self.IEN[0,:]-1)
+  _self.pressureFreedomDegree = len(_self.IEN[0,:]) - 1
   length = []
 
   for e in range(0, _self.numElements):
