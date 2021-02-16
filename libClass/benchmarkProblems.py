@@ -1716,20 +1716,23 @@ class Convection1D:
 class NS2D:
 
 
- def __init__(_self, _numPhysical, _numNodes):
+ def __init__(_self, _numPhysical, _numNodes, _numVerts):
   _self.numPhysical = _numPhysical
   _self.numNodes = _numNodes
+  _self.numVerts = _numVerts
 
 
- def gaussianElimination(_self, _LHS0, _dirichletNodesVx, _dirichletNodesVy, _dirichletNodesPressure, _neighborsNodes, _aux1BCVx, _aux1BCVy, _aux1BCPressure):
+ def gaussianElimination(_self, _LHS0, _dirichletNodesVx, _dirichletNodesVy, _dirichletNodesPressure, _neighborsNodes, _neighborsNodesPressure, _aux1BCVx, _aux1BCVy, _aux1BCPressure):
   _self.dirichletNodesVx = _dirichletNodesVx 
   _self.dirichletNodesVy = _dirichletNodesVy 
   _self.dirichletNodesPressure = _dirichletNodesPressure
   _self.aux1BCVx = _aux1BCVx
   _self.aux1BCVy = _aux1BCVy
-  _self.aux1BCPressute = _aux1BCPressure
-  _self.LHS = sps.lil_matrix.copy(_LHS0)
+  _self.aux1BCPressure = _aux1BCPressure
+  #_self.LHS = sps.lil_matrix.copy(_LHS0)
+  _self.LHS = np.copy(_LHS0)
   _self.neighborsNodes = _neighborsNodes
+  _self.neighborsNodesPressure = _neighborsNodesPressure
   _self.dirichletVector = np.zeros([2*_self.numNodes + _self.numVerts,1], dtype = float) 
   _self.aux2BC = np.ones([2*_self.numNodes + _self.numVerts,1], dtype = float) 
 
@@ -1766,7 +1769,7 @@ class NS2D:
 
   # Gaussian elimination for pressure
   for mm in _self.dirichletNodesPressure:
-   for nn in _self.neighborsNodes[mm]:
+   for nn in _self.neighborsNodesPressure[mm]:
     _self.dirichletVector[nn + 2*_self.numNodes] -= float(_self.LHS[nn + 2*_self.numNodes,mm + 2*_self.numNodes]*_self.aux1BCPressure[mm])
     _self.LHS[nn + 2*_self.numNodes,mm + 2*_self.numNodes] = 0.0
     _self.LHS[mm + 2*_self.numNodes,nn + 2*_self.numNodes] = 0.0

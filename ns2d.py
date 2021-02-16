@@ -195,6 +195,7 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
   boundaryNodes          = mesh.boundaryNodes
   neighborsNodes         = mesh.neighborsNodes
   neighborsNodesALE      = mesh.neighborsNodesALE
+  neighborsNodesPressure      = mesh.neighborsNodesALE
   neighborsElements      = mesh.neighborsElements
   minLengthMesh          = mesh.minLengthMesh
   velocityFreedomDegree  = mesh.velocityFreedomDegree
@@ -336,7 +337,7 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
 
  # Applying vx condition
  xVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,x,y)
- xVelocityBC.xVelocityCondition(boundaryEdgesneighborsNodes)
+ xVelocityBC.xVelocityCondition(boundaryEdges,neighborsNodes)
  benchmark_problem = xVelocityBC.benchmark_problem
 
  # Applying vy condition
@@ -345,7 +346,7 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
  
  # Applying pressure condition
  pressureBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,x,y)
- pressureBC.pressureCondition(boundaryEdges,neighborsNodes)
+ pressureBC.pressureCondition(boundaryEdges,neighborsNodesPressure)
 
  # Applying concentration condition
  #concentrationLHS0 = (sps.lil_matrix.copy(M)/dt) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kxx) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kyy)
@@ -353,8 +354,8 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
  #concentrationBC.concentrationCondition(boundaryEdges,concentrationLHS0,neighborsNodes)
 
  # Applying Gaussian Elimination
- gaussianElimination = benchmarkProblems.NS2D(numPhysical, numNodes)
- gaussianElimination.gaussianElimination(A, xVelocityBC.dirichletNodes, yVelocityBC.dirichletNodes, pressureBC.dirichletNodes, neighborsNodes, xVelocityBC.aux1BC, yVelocityBC.aux1BC, pressureBC.aux1BC)
+ gaussianElimination = benchmarkProblems.NS2D(numPhysical, numNodes, numVerts)
+ gaussianElimination.gaussianElimination(A, xVelocityBC.dirichletNodes, yVelocityBC.dirichletNodes, pressureBC.dirichletNodes, neighborsNodes, neighborsNodesPressure, xVelocityBC.aux1BC, yVelocityBC.aux1BC, pressureBC.aux1BC)
  LHS = gaussianElimination.LHS
 
 # Quad Element
@@ -396,7 +397,7 @@ if import_option == 0:
  vx = np.copy(xVelocityBC.aux1BC)
  vy = np.copy(yVelocityBC.aux1BC)
  p = np.copy(pressureBC.aux1BC)
- c = np.copy(concentrationBC.aux1BC)
+ #c = np.copy(concentrationBC.aux1BC)
  sol = np.append(vx,vy)
  sol = np.append(sol,p)
  # ---------------------------------------------------------------------------------
@@ -461,7 +462,7 @@ os.chdir(initial_path)
 # ------------------------ Export VTK File ---------------------------------------
 # Linear and Mini Elements
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:   
- save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,p,p,c,vx,vy)
+ save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,p,p,p,vx,vy)
  save.create_dir(folderResults)
  save.saveVTK(folderResults + str(0))
 
@@ -741,11 +742,17 @@ for t in tqdm(range(1, nt)):
   # psi condition
   start_streamfunctionsolver_time = time()
 
-  RHS = sps.lil_matrix.dot((M/dt),np.append(vx,vy))
-  RHS = np.multiply(RHS,streamFunctionBC.aux2BC)
+  #scipy
+  #RHS = sps.lil_matrix.dot((M/dt),np.append(vx,vy))
+  #RHS = np.multiply(RHS,gaussianElimination.aux2BC)
+  #RHS = RHS + gaussianElimination.dirichletVector
+  #sol = scipy.sparse.linalg.cg(LHS,RHS,sol, maxiter=1.0e+05, tol=1.0e-05)
+  #sol = psi[0].reshape((len(sol[0]),1))
+
+  RHS = np.dot((M/dt),np.append(vx,vy))
+  RHS = np.multiply(RHS,gaussianElimination.aux2BC)
   RHS = RHS + gaussianElimination.dirichletVector
-  sol = scipy.sparse.linalg.cg(LHS,RHS,sol, maxiter=1.0e+05, tol=1.0e-05)
-  sol = psi[0].reshape((len(sol[0]),1))
+  sol = np.linalg.solve(LHS,RHS)
 
   vx = sol[0:numNodes]
   vy = sol[numNodes:2*numNodes]
@@ -808,7 +815,7 @@ for t in tqdm(range(1, nt)):
 
   # Linear and Mini Elements
   if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:   
-   save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,p,p,c,vx,vy)
+   save = exportVTK.Linear2D(x,y,IEN,numNodes,numElements,p,p,p,vx,vy)
    save.create_dir(folderResults)
    save.saveVTK(folderResults + str(t))
  

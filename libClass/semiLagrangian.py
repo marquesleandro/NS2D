@@ -716,12 +716,14 @@ def Linear2D_v3(_npoints, _neighbors_nodes, _neighbors_elements, _IEN, _xn, _yn,
 
  return scalar
 
-# 2D Semi-Lagrangian using npoints x neighbors_elements to find departure node
-def Mini2D(_npoints, _neighbors_elements, _IEN, _xn, _yn, _vx, _vy, _dt, _scalar):
+
+# copied from SL linear 
+def Mini2D(_npoints, _neighbors_elements, _IEN, _xn, _yn, _vx, _vy, _dt, _scalar1, _scalar2):
  xd = _xn - _vx*_dt
  yd = _yn - _vy*_dt
  
- scalar = np.zeros([_npoints,1], dtype = float) 
+ scalar1 = np.zeros([_npoints,1], dtype = float) 
+ scalar2 = np.zeros([_npoints,1], dtype = float) 
  
  for i in range(0,_npoints):
   x = float(xd[i])
@@ -756,7 +758,7 @@ def Mini2D(_npoints, _neighbors_elements, _IEN, _xn, _yn, _vx, _vy, _dt, _scalar
  
     if np.all(alpha >= 0.0) and np.all(alpha <= 1.0):
      v4 = _IEN[e][3]
-
+ 
      A1 = 0.5*np.linalg.det(np.array([[1, x, y],
                                       [1, x2, y2],
                                       [1, x3, y3]]))
@@ -782,20 +784,18 @@ def Mini2D(_npoints, _neighbors_elements, _IEN, _xn, _yn, _vx, _vy, _dt, _scalar
      N3 = L3 - 9.0*L1*L2*L3
      N4 = 27.0*L1*L2*L3      
 
-     scalar1 = _scalar[v1]
-     scalar2 = _scalar[v2]
-     scalar3 = _scalar[v3]
-     scalar4 = _scalar[v4]
+     scalar1a = _scalar1[v1]
+     scalar1b = _scalar1[v2]
+     scalar1c = _scalar1[v3]
+     scalar1d = _scalar1[v4]
 
-     scalar[i] = N1*scalar1 + N2*scalar2 + N3*scalar3 + N4*scalar4
+     scalar2a = _scalar2[v1]
+     scalar2b = _scalar2[v2]
+     scalar2c = _scalar2[v3]
+     scalar2d = _scalar2[v4]
 
-     # Interpolation limits
-     scalar_limits = [scalar1,scalar2,scalar3,scalar4]
-     if scalar[i] < min(scalar_limits):
-      scalar[i] = min(scalar_limits)
-
-     elif scalar[i] > max(scalar_limits):
-      scalar[i] = max(scalar_limits)
+     scalar1[i] = N1*scalar1a + N2*scalar1b + N3*scalar1c + N4*scalar1d
+     scalar2[i] = N1*scalar2a + N2*scalar2b + N3*scalar2c + N4*scalar2d
 
      breaking = 1
      break
@@ -838,13 +838,16 @@ def Mini2D(_npoints, _neighbors_elements, _IEN, _xn, _yn, _vx, _vy, _dt, _scalar
 
     # outside domain
     if node == node1 and breaking == 0:
-     scalar[i] = _scalar[node]
+     scalar1[i] = _scalar1[node]
+     scalar2[i] = _scalar2[node]
      
      breaking = 1
      break
 
 
- return scalar
+ return scalar1, scalar2
+
+
 
 
 
