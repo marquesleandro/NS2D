@@ -1325,7 +1325,7 @@ class NS2DPoiseuille:
    v2 = _self.boundaryEdges[i][2] - 1
 
    # Noslip 
-   if line == 1:
+   if line == 1 or line == 4:
     _self.aux1BC[v1] = 0.0
     _self.aux1BC[v2] = 0.0
  
@@ -1357,7 +1357,7 @@ class NS2DPoiseuille:
    v2 = _self.boundaryEdges[i][2] - 1
 
    # Noslip 
-   if line == 1:
+   if line == 1 or line == 4:
     _self.aux1BC[v1] = 0.0
     _self.aux1BC[v2] = 0.0
  
@@ -1393,7 +1393,7 @@ class NS2DPoiseuille:
    if line == 2:
     _self.aux1BC[v1] = 0.0
     _self.aux1BC[v2] = 0.0
- 
+
     _self.dirichletNodes.append(v1)
     _self.dirichletNodes.append(v2)
 
