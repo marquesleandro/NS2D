@@ -406,6 +406,7 @@ class Mini2D:
   _self.boundaryEdges = []
   _self.boundaryNodes = []
   _self.neighborsNodes = {}
+  _self.neighborsNodesPressure = {}
   _self.neighborsNodesALE = {}
   _self.neighborsElements = {}
 
@@ -458,9 +459,12 @@ class Mini2D:
   # consider update from numNodes to numVerts
   for i in range(0, _self.numNodes):
    _self.neighborsNodes[i] = []
-   _self.neighborsNodesALE[i] = []
+   _self.neighborsNodesPressure[i] = []
    _self.neighborsElements[i] = []
    _self.npts.append(i)
+
+  for i in range(0, _self.numVerts):
+   _self.neighborsNodesALE[i] = []
 
 
 
@@ -495,15 +499,26 @@ class Mini2D:
 
  
 
+   _self.neighborsNodesPressure[v1].extend([v1,v2,v3])  
+   _self.neighborsNodesPressure[v2].extend([v1,v2,v3])  
+   _self.neighborsNodesPressure[v3].extend([v1,v2,v3])  
+   _self.neighborsNodesPressure[v4].extend([v4])  
+   
+   _self.neighborsNodesPressure[v1] = list(set(_self.neighborsNodesPressure[v1]))
+   _self.neighborsNodesPressure[v2] = list(set(_self.neighborsNodesPressure[v2]))
+   _self.neighborsNodesPressure[v3] = list(set(_self.neighborsNodesPressure[v3]))
+   _self.neighborsNodesPressure[v4] = list(set(_self.neighborsNodesPressure[v4]))
+
+
+
    _self.neighborsNodesALE[v1].extend([v1,v2,v3])  
    _self.neighborsNodesALE[v2].extend([v1,v2,v3])  
    _self.neighborsNodesALE[v3].extend([v1,v2,v3])  
-   _self.neighborsNodesALE[v4].extend([v4])  
    
    _self.neighborsNodesALE[v1] = list(set(_self.neighborsNodesALE[v1]))
    _self.neighborsNodesALE[v2] = list(set(_self.neighborsNodesALE[v2]))
    _self.neighborsNodesALE[v3] = list(set(_self.neighborsNodesALE[v3]))
-   _self.neighborsNodesALE[v4] = list(set(_self.neighborsNodesALE[v4]))
+
 
  
    

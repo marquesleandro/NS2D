@@ -186,22 +186,22 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
  elif polynomial_option == 2:
   mesh = importMSH.Mini2D(pathMSHFile, mshFileName)
 
-  numNodes               = mesh.numNodes
-  numVerts               = mesh.numVerts
-  numElements            = mesh.numElements
-  x                      = mesh.x
-  y                      = mesh.y
-  IEN                    = mesh.IEN
-  boundaryEdges          = mesh.boundaryEdges
-  boundaryNodes          = mesh.boundaryNodes
-  neighborsNodes         = mesh.neighborsNodes
-  neighborsNodesALE      = mesh.neighborsNodesALE
-  neighborsNodesPressure      = mesh.neighborsNodesALE
-  neighborsElements      = mesh.neighborsElements
-  minLengthMesh          = mesh.minLengthMesh
-  velocityFreedomDegree  = mesh.velocityFreedomDegree
-  pressureFreedomDegree  = mesh.pressureFreedomDegree
-  numPhysical            = mesh.numPhysical 
+  numNodes                    = mesh.numNodes
+  numVerts                    = mesh.numVerts
+  numElements                 = mesh.numElements
+  x                           = mesh.x
+  y                           = mesh.y
+  IEN                         = mesh.IEN
+  boundaryEdges               = mesh.boundaryEdges
+  boundaryNodes               = mesh.boundaryNodes
+  neighborsNodes              = mesh.neighborsNodes
+  neighborsNodesALE           = mesh.neighborsNodesALE
+  neighborsNodesPressure      = mesh.neighborsNodesPressure
+  neighborsElements           = mesh.neighborsElements
+  minLengthMesh               = mesh.minLengthMesh
+  velocityFreedomDegree       = mesh.velocityFreedomDegree
+  pressureFreedomDegree       = mesh.pressureFreedomDegree
+  numPhysical                 = mesh.numPhysical 
   Re = 100.0
   Sc = 1.0
   CFL = 0.5
@@ -554,9 +554,9 @@ for t in tqdm(range(1, nt)):
     start_time = time()
    
    
-    vxLaplacianSmooth, vyLaplacianSmooth = ALE.Laplacian_smoothing(neighborsNodesALE, numNodes, x, y, dt)
+    vxLaplacianSmooth, vyLaplacianSmooth = ALE.MINILaplacian_smoothing(neighborsNodesALE, numNodes, numVerts, numElements, IEN, x, y, dt)
     #vxLaplacianSmooth, vyLaplacianSmooth = ALE.Laplacian_smoothing_avg(neighborsNodesALE, numNodes, x, y, dt)
-    vxVelocitySmooth,  vyVelocitySmooth  = ALE.Velocity_smoothing(neighborsNodesALE, numNodes, vx, vy)
+    vxVelocitySmooth,  vyVelocitySmooth  = ALE.Velocity_smoothing(neighborsNodes, numNodes, vx, vy)
   
     vxMesh = kLagrangian*vx + kLaplacian*vxLaplacianSmooth + kVelocity*vxVelocitySmooth
     vyMesh = kLagrangian*vy + kLaplacian*vyLaplacianSmooth + kVelocity*vyVelocitySmooth
@@ -569,7 +569,12 @@ for t in tqdm(range(1, nt)):
    
     x = x + vxMesh*dt
     y = y + vyMesh*dt
-   
+
+    x = np.asarray(x) 
+    y = np.asarray(y)
+ 
+    print x[2]
+ 
     vxALE = vx - vxMesh
     vyALE = vy - vyMesh
    
@@ -587,7 +592,29 @@ for t in tqdm(range(1, nt)):
     print ' ASSEMBLY:'
     print ' ---------'
   
-    Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.Element2D(simulation_option, polynomial_option, FreedomDegree, numNodes, numElements, IEN, x, y, gausspoints)
+    Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.NS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
+
+    #numpy
+    Kxx = Kxx.todense()
+    Kyy = Kyy.todense()
+    K   = K.todense()
+    M   = M.todense()
+    Gx  = Gx.todense()
+    Gy  = Gy.todense()
+    
+    G = np.block([[Gx],
+                  [Gy]])
+    
+    D = G.transpose()
+    
+    Z = np.zeros([numVerts,numVerts], dtype=float)
+    
+    # [ (M/dt) + K             Gx]
+    # [            (M/dt) + K  Gy]
+    # [     Dx          Dy     0 ]
+    
+    A = np.block([[(M/dt)+(1./Re)*(Kxx+Kyy),  -G],              
+                  [      D                 ,   Z]])             
     # --------------------------------------------------------------------------------
   
   
@@ -602,54 +629,56 @@ for t in tqdm(range(1, nt)):
     
     # Linear and Mini Elements
     if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
-  
+    
      # Applying vx condition
      start_xVelocityBC_time = time()
-     xVelocityLHS0 = sps.lil_matrix.copy(M)
-     xVelocityBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
-     xVelocityBC.xVelocityCondition(boundaryEdges,xVelocityLHS0,neighborsNodes)
+     xVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+     xVelocityBC.xVelocityCondition(boundaryEdges,neighborsNodes)
      benchmark_problem = xVelocityBC.benchmark_problem
      end_xVelocityBC_time = time()
      xVelocityBC_time = end_xVelocityBC_time - start_xVelocityBC_time
      print ' xVelocity BC: %.1f seconds' %xVelocityBC_time
- 
-    
+     
      # Applying vy condition
      start_yVelocityBC_time = time()
-     yVelocityLHS0 = sps.lil_matrix.copy(M)
-     yVelocityBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
-     yVelocityBC.yVelocityCondition(boundaryEdges,yVelocityLHS0,neighborsNodes)
+     yVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+     yVelocityBC.yVelocityCondition(boundaryEdges,neighborsNodes)
      end_yVelocityBC_time = time()
      yVelocityBC_time = end_yVelocityBC_time - start_yVelocityBC_time
      print ' yVelocity BC: %.1f seconds' %yVelocityBC_time
- 
- 
- 
      
      # Applying pressure condition
      start_pressureBC_time = time()
-     pressureLHS0 = sps.lil_matrix.copy(Kxx) + sps.lil_matrix.copy(Kyy)
-     pressureBC = benchmarkProblems.linearPressure(numPhysical,numNodes,x,y)
-     pressureBC.pressureCondition(boundaryEdges,streamFunctionLHS0,neighborsNodes)
+     pressureBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+     pressureBC.pressureCondition(boundaryEdges,neighborsNodesPressure)
      end_pressureBC_time = time()
      pressureBC_time = end_pressureBC_time - start_pressureBC_time
      print ' pressure BC: %.1f seconds' %pressureBC_time
- 
- 
- 
-    
+     
      # Applying concentration condition
-     start_concentrationBC_time = time()
-     concentrationLHS0 = (sps.lil_matrix.copy(M)/dt) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kxx) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kyy)
-     concentrationBC = benchmarkProblems.linearStent(numPhysical,numNodes,x,y)
-     concentrationBC.concentrationCondition(boundaryEdges,concentrationLHS0,neighborsNodes)
-     end_concentrationBC_time = time()
-     concentrationBC_time = end_concentrationBC_time - start_concentrationBC_time
-     print ' concentration BC: %.1f seconds' %concentrationBC_time
- 
- 
- 
+     #concentrationLHS0 = (sps.lil_matrix.copy(M)/dt) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kxx) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kyy)
+     #concentrationBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
+     #concentrationBC.concentrationCondition(boundaryEdges,concentrationLHS0,neighborsNodes)
     
+     # Applying Gaussian Elimination
+     #gaussianElimination = benchmarkProblems.NS2D(numPhysical, numNodes, numVerts)
+     #gaussianElimination.gaussianElimination(A, xVelocityBC.dirichletNodes, yVelocityBC.dirichletNodes, pressureBC.dirichletNodes, neighborsNodes, neighborsNodesPressure, xVelocityBC.aux1BC, yVelocityBC.aux1BC, pressureBC.aux1BC)
+     #LHS = gaussianElimination.LHS
+    
+     for i in xVelocityBC.dirichletNodes:
+      A[i,:] = 0.0 
+      A[i,i] = 1.0 
+    
+     for i in yVelocityBC.dirichletNodes:
+      A[i + numNodes,:] = 0.0 
+      A[i + numNodes,i + numNodes] = 1.0 
+    
+     for i in pressureBC.dirichletNodes:
+      A[i + 2*numNodes,:] = 0.0 
+      A[i + 2*numNodes,i + 2*numNodes] = 1.0 
+    
+    
+   
    
     # Quad Element
     elif polynomial_option == 3:
@@ -752,44 +781,11 @@ for t in tqdm(range(1, nt)):
   print ' SOLVE THE LINEARS EQUATIONS:'
   print ' ----------------------------'
 
- 
-
- 
-  #---------- Step 4 - Solve the streamline equation --------------------------------
-  # Solve Streamline
-  # psi condition
-  start_streamfunctionsolver_time = time()
-
-  #scipy
-  #RHS = sps.lil_matrix.dot((M/dt),np.append(vx,vy))
-  #RHS = np.multiply(RHS,gaussianElimination.aux2BC)
-  #RHS = RHS + gaussianElimination.dirichletVector
-  #sol = scipy.sparse.linalg.cg(LHS,RHS,sol, maxiter=1.0e+05, tol=1.0e-05)
-  #sol = psi[0].reshape((len(sol[0]),1))
- 
-  #print np.shape((M/dt))
-  #print np.shape(np.concatenate((vx_d,vy_d),axis=0))
-  #print np.shape(np.concatenate((np.concatenate((vx,vy),axis=0),p),axis=0))
-  #print np.shape(gaussianElimination.aux2BC)
-  #print numNodes
-  #print numVerts
-  #print 2*numNodes + numVerts
-  #print np.shape(vx)
-  #print np.shape(vy)
-  #print np.shape(p)
-
-  #print boundaryNodes
-  #print gaussianElimination.aux2BC[21] 
-  #print gaussianElimination.dirichletVector[21]
-
-  #RHS = np.dot((M/dt),np.concatenate((vx_d,vy_d),axis=0))
-  #RHS = np.concatenate((RHS,(np.zeros([numVerts,1],dtype = float))),axis=0)
-  #RHS = np.multiply(RHS,gaussianElimination.aux2BC)
-  #RHS = RHS + gaussianElimination.dirichletVector
-  #sol = np.linalg.solve(LHS,RHS)
+  #---------- Step 1 - Solve the continuity and momentum equation ----------------------
+  start_solver_time = time()
 
   b = np.dot(M/dt,np.concatenate((vx_d,vy_d),axis=0))
-  #b = np.dot(M/dt,np.concatenate((vx,vy),axis=0))
+  #b = np.dot(M/dt,np.concatenate((vx,vy),axis=0))  #stokes
   bp = np.zeros([numVerts,1], dtype = float)
   b = np.concatenate((b,bp),axis=0)
 
@@ -802,30 +798,20 @@ for t in tqdm(range(1, nt)):
   for i in pressureBC.dirichletNodes:
    b[i + 2*numNodes] = pressureBC.aux1BC[i]
 
-  #print np.linalg.norm(A)
-  #print np.linalg.norm(xVelocityBC.aux1BC)
-  #print np.linalg.norm(yVelocityBC.aux1BC)
-  #print np.linalg.norm(pressureBC.aux1BC)
-  #print xVelocityBC.dirichletNodes
-  #print yVelocityBC.dirichletNodes
-  #print pressureBC.dirichletNodes
-
-
-
   sol = np.linalg.solve(A,b)
 
   vx = sol[0:numNodes]
   vy = sol[numNodes:2*numNodes]
   p  = sol[2*numNodes:]
 
-  end_streamfunctionsolver_time = time()
-  streamfunctionsolver_time = end_streamfunctionsolver_time - start_streamfunctionsolver_time
-  print ' Streamfunction Solver: %.1f seconds' %streamfunctionsolver_time
+  end_solver_time = time()
+  solver_time = end_solver_time - start_solver_time
+  print ' Solver Continuity and Momentum Equation: %.1f seconds' %solver_time
   #----------------------------------------------------------------------------------
  
  
 
-  #---------- Step 7 - Solve the specie transport equation ----------------------
+  #---------- Step 2 - Solve the specie transport equation ----------------------
   #start_concentrationsolver_time = time()
 
   #c_old = np.copy(c)
