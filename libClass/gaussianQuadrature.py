@@ -1111,12 +1111,12 @@ class Element2D:
   j = _self.IEN[_e][1]
   k = _self.IEN[_e][2]
 
-  bi = _self.y[j]-_self.y[k]
-  bj = _self.y[k]-_self.y[i]
-  bk = _self.y[i]-_self.y[j]
-  ci = _self.x[k]-_self.x[j]
-  cj = _self.x[i]-_self.x[k]
-  ck = _self.x[j]-_self.x[i]
+  bi = float(_self.y[j]-_self.y[k])
+  bj = float(_self.y[k]-_self.y[i])
+  bk = float(_self.y[i]-_self.y[j])
+  ci = float(_self.x[k]-_self.x[j])
+  cj = float(_self.x[i]-_self.x[k])
+  ck = float(_self.x[j]-_self.x[i])
 
 
   A = 0.5*np.linalg.det(np.array([[1, _self.x[i], _self.y[i]],
@@ -1125,8 +1125,8 @@ class Element2D:
 
 
   zz    = (1.0/(4.0*A))*(bj*bj + bk*bk + bj*bk + cj*cj + ck*ck + cj*ck)
-  zzx   = (1.0/(4.0*A))*(bj*bj + bk*bk + bj*bk)
-  zzy   = (1.0/(4.0*A))*(cj*cj + ck*ck + cj*ck)
+  zzx   = (1.0/(4.0*A))*(bj*bj + bj*bk + bk*bk)
+  zzy   = (1.0/(4.0*A))*(cj*cj + cj*ck + ck*ck)
   zzxy  = (1.0/(4.0*A))*(bj*cj + bk*ck + 0.5*bj*ck + 0.5*bk*cj)
   zzyx  = (1.0/(4.0*A))*(cj*bj + ck*bk + 0.5*cj*bk + 0.5*ck*bj)
   
@@ -1138,7 +1138,8 @@ class Element2D:
                                   [45.,45.,45.,243.]])
 
   _self.q = (A/3.)*np.ones([3,1], dtype = float)
-  
+ 
+  # metodo projecao 
   #_self.gx = (1./6)*np.array([[(11./120)*bi,(11./120)*bj,(11./120)*bk],
   #                            [(11./120)*bi,(11./120)*bj,(11./120)*bk],
   #                            [(11./120)*bi,(11./120)*bj,(11./120)*bk],
@@ -1149,16 +1150,47 @@ class Element2D:
   #                            [(11./120)*ci,(11./120)*cj,(11./120)*ck],
   #                            [(9./40)  *ci,(9./40)  *cj,(9./40)  *ck]]) 
    
-  _self.gx = (1./6)*np.array([[bi,bj,bk],
-                              [bi,bj,bk],
-                              [bi,bj,bk],
-                              [(9./40)*bi,(9./40)*bj,(9./40)*bk]]) 
+  _self.gxLinear = (1./6)*np.array([[bi,bj,bk],
+                                    [bi,bj,bk],
+                                    [bi,bj,bk]])
 
-  _self.gy = (1./6)*np.array([[ci,cj,ck],
-                              [ci,cj,ck],
-                              [ci,cj,ck],
-                              [(9./40)*ci,(9./40)*cj,(9./40)*ck]]) 
+  _self.gyLinear = (1./6)*np.array([[ci,cj,ck],
+                                    [ci,cj,ck],
+                                    [ci,cj,ck]])
  
+  _self.gxLinearT = np.transpose(_self.gxLinear)
+  _self.gyLinearT = np.transpose(_self.gyLinear)
+
+  _self.gx = np.zeros([4,3], dtype = float)
+  _self.gx[0,0]   = (9./20)*_self.gxLinear[0][0] + _self.gxLinearT[0][0]
+  _self.gx[0,1]   = (9./20)*_self.gxLinear[0][1] + _self.gxLinearT[0][1]
+  _self.gx[0,2]   = (9./20)*_self.gxLinear[0][2] + _self.gxLinearT[0][2]
+  _self.gx[1,0]   = (9./20)*_self.gxLinear[1][0] + _self.gxLinearT[1][0]
+  _self.gx[1,1]   = (9./20)*_self.gxLinear[1][1] + _self.gxLinearT[1][1]
+  _self.gx[1,2]   = (9./20)*_self.gxLinear[1][2] + _self.gxLinearT[1][2]
+  _self.gx[2,0]   = (9./20)*_self.gxLinear[2][0] + _self.gxLinearT[2][0]
+  _self.gx[2,1]   = (9./20)*_self.gxLinear[2][1] + _self.gxLinearT[2][1]
+  _self.gx[2,2]   = (9./20)*_self.gxLinear[2][2] + _self.gxLinearT[2][2]
+  _self.gx[3,0]   = - (9./40)*bi
+  _self.gx[3,1]   = - (9./40)*bj
+  _self.gx[3,2]   = - (9./40)*bk
+
+
+  _self.gy = np.zeros([4,3], dtype = float)
+  _self.gy[0,0]   = (9./20)*_self.gyLinear[0][0] + _self.gyLinearT[0][0]
+  _self.gy[0,1]   = (9./20)*_self.gyLinear[0][1] + _self.gyLinearT[0][1]
+  _self.gy[0,2]   = (9./20)*_self.gyLinear[0][2] + _self.gyLinearT[0][2]
+  _self.gy[1,0]   = (9./20)*_self.gyLinear[1][0] + _self.gyLinearT[1][0]
+  _self.gy[1,1]   = (9./20)*_self.gyLinear[1][1] + _self.gyLinearT[1][1]
+  _self.gy[1,2]   = (9./20)*_self.gyLinear[1][2] + _self.gyLinearT[1][2]
+  _self.gy[2,0]   = (9./20)*_self.gyLinear[2][0] + _self.gyLinearT[2][0]
+  _self.gy[2,1]   = (9./20)*_self.gyLinear[2][1] + _self.gyLinearT[2][1]
+  _self.gy[2,2]   = (9./20)*_self.gyLinear[2][2] + _self.gyLinearT[2][2]
+  _self.gy[3,0]   = - (9./40)*ci
+  _self.gy[3,1]   = - (9./40)*cj
+  _self.gy[3,2]   = - (9./40)*ck
+
+
 
 
 
@@ -1181,40 +1213,40 @@ class Element2D:
 
 
   _self.kxx = np.zeros([4,4], dtype = float)
-  _self.kxx[0,0]   = _self.kxxLinear[0][0] + (9./40)*zzx
-  _self.kxx[0,1]   = _self.kxxLinear[0][1] + (9./40)*zzx
-  _self.kxx[0,2]   = _self.kxxLinear[0][2] + (9./40)*zzx
-  _self.kxx[1,0]   = _self.kxxLinear[1][0] + (9./40)*zzx
-  _self.kxx[1,1]   = _self.kxxLinear[1][1] + (9./40)*zzx
-  _self.kxx[1,2]   = _self.kxxLinear[1][2] + (9./40)*zzx
-  _self.kxx[2,0]   = _self.kxxLinear[2][0] + (9./40)*zzx
-  _self.kxx[2,1]   = _self.kxxLinear[2][1] + (9./40)*zzx
-  _self.kxx[2,2]   = _self.kxxLinear[2][2] + (9./40)*zzx
-  _self.kxx[0,3]   = - (27./40)*zzx
-  _self.kxx[1,3]   = - (27./40)*zzx
-  _self.kxx[2,3]   = - (27./40)*zzx
-  _self.kxx[3,0]   = - (27./40)*zzx
-  _self.kxx[3,1]   = - (27./40)*zzx
-  _self.kxx[3,2]   = - (27./40)*zzx
-  _self.kxx[3,3]   = - (81./40)*zzx
+  _self.kxx[0,0]   = _self.kxxLinear[0][0] + (9./10)*zzx
+  _self.kxx[0,1]   = _self.kxxLinear[0][1] + (9./10)*zzx
+  _self.kxx[0,2]   = _self.kxxLinear[0][2] + (9./10)*zzx
+  _self.kxx[1,0]   = _self.kxxLinear[1][0] + (9./10)*zzx
+  _self.kxx[1,1]   = _self.kxxLinear[1][1] + (9./10)*zzx
+  _self.kxx[1,2]   = _self.kxxLinear[1][2] + (9./10)*zzx
+  _self.kxx[2,0]   = _self.kxxLinear[2][0] + (9./10)*zzx
+  _self.kxx[2,1]   = _self.kxxLinear[2][1] + (9./10)*zzx
+  _self.kxx[2,2]   = _self.kxxLinear[2][2] + (9./10)*zzx
+  _self.kxx[0,3]   = - (27./10)*zzx
+  _self.kxx[1,3]   = - (27./10)*zzx
+  _self.kxx[2,3]   = - (27./10)*zzx
+  _self.kxx[3,0]   = - (27./10)*zzx
+  _self.kxx[3,1]   = - (27./10)*zzx
+  _self.kxx[3,2]   = - (27./10)*zzx
+  _self.kxx[3,3]   =   (81./10)*zzx
 
   _self.kyy = np.zeros([4,4], dtype = float)
-  _self.kyy[0,0]   = _self.kyyLinear[0][0] + (9./40)*zzy
-  _self.kyy[0,1]   = _self.kyyLinear[0][1] + (9./40)*zzy
-  _self.kyy[0,2]   = _self.kyyLinear[0][2] + (9./40)*zzy
-  _self.kyy[1,0]   = _self.kyyLinear[1][0] + (9./40)*zzy
-  _self.kyy[1,1]   = _self.kyyLinear[1][1] + (9./40)*zzy
-  _self.kyy[1,2]   = _self.kyyLinear[1][2] + (9./40)*zzy
-  _self.kyy[2,0]   = _self.kyyLinear[2][0] + (9./40)*zzy
-  _self.kyy[2,1]   = _self.kyyLinear[2][1] + (9./40)*zzy
-  _self.kyy[2,2]   = _self.kyyLinear[2][2] + (9./40)*zzy
-  _self.kyy[0,3]   = - (27./40)*zzy
-  _self.kyy[1,3]   = - (27./40)*zzy
-  _self.kyy[2,3]   = - (27./40)*zzy
-  _self.kyy[3,0]   = - (27./40)*zzy
-  _self.kyy[3,1]   = - (27./40)*zzy
-  _self.kyy[3,2]   = - (27./40)*zzy
-  _self.kyy[3,3]   = - (81./40)*zzy
+  _self.kyy[0,0]   = _self.kyyLinear[0][0] + (9./10)*zzy
+  _self.kyy[0,1]   = _self.kyyLinear[0][1] + (9./10)*zzy
+  _self.kyy[0,2]   = _self.kyyLinear[0][2] + (9./10)*zzy
+  _self.kyy[1,0]   = _self.kyyLinear[1][0] + (9./10)*zzy
+  _self.kyy[1,1]   = _self.kyyLinear[1][1] + (9./10)*zzy
+  _self.kyy[1,2]   = _self.kyyLinear[1][2] + (9./10)*zzy
+  _self.kyy[2,0]   = _self.kyyLinear[2][0] + (9./10)*zzy
+  _self.kyy[2,1]   = _self.kyyLinear[2][1] + (9./10)*zzy
+  _self.kyy[2,2]   = _self.kyyLinear[2][2] + (9./10)*zzy
+  _self.kyy[0,3]   = - (27./10)*zzy
+  _self.kyy[1,3]   = - (27./10)*zzy
+  _self.kyy[2,3]   = - (27./10)*zzy
+  _self.kyy[3,0]   = - (27./10)*zzy
+  _self.kyy[3,1]   = - (27./10)*zzy
+  _self.kyy[3,2]   = - (27./10)*zzy
+  _self.kyy[3,3]   =   (81./40)*zzy
 
   _self.kxy = np.zeros([4,4], dtype = float)
   _self.kxy[0,0]   = _self.kxyLinear[0][0] + (9./40)*zzxy

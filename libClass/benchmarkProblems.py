@@ -1309,7 +1309,7 @@ class NS2DPoiseuille:
   _self.y = _y
   _self.maxVx = 3.0/2.0
   _self.L = 1.0
-  _self.benchmark_problem = 'linear Poiseuille'
+  _self.benchmark_problem = 'NS2D Poiseuille'
 
 
  def xVelocityCondition(_self, _boundaryEdges, _neighborsNodes):
