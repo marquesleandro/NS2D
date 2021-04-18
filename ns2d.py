@@ -554,7 +554,8 @@ for t in tqdm(range(1, nt)):
     start_time = time()
    
    
-    vxLaplacianSmooth, vyLaplacianSmooth = ALE.MINILaplacian_smoothing(neighborsNodesALE, numNodes, numVerts, numElements, IEN, x, y, dt)
+    vxLaplacianSmooth, vyLaplacianSmooth = ALE.Laplacian_smoothing(neighborsNodesALE, numNodes, numVerts, x, y, dt)
+    #vxLaplacianSmooth, vyLaplacianSmooth = ALE.MINILaplacian_smoothing(neighborsNodesALE, numNodes, numVerts, numElements, IEN, x, y, dt)
     #vxLaplacianSmooth, vyLaplacianSmooth = ALE.Laplacian_smoothing_avg(neighborsNodesALE, numNodes, x, y, dt)
     vxVelocitySmooth,  vyVelocitySmooth  = ALE.Velocity_smoothing(neighborsNodes, numNodes, vx, vy)
   
@@ -572,9 +573,20 @@ for t in tqdm(range(1, nt)):
 
     x = np.asarray(x) 
     y = np.asarray(y)
- 
-    print x[2]
- 
+
+    for e in range(0,numElements):
+     v1 = IEN[e][0]
+     v2 = IEN[e][1]
+     v3 = IEN[e][2]
+     v4 = IEN[e][3]
+    
+     vxMesh[v4] = (vxMesh[v1] + vxMesh[v2] + vxMesh[v3])/3.0
+     vyMesh[v4] = (vyMesh[v1] + vyMesh[v2] + vyMesh[v3])/3.0
+     x[v4] = (x[v1] + x[v2] + x[v3])/3.0
+     y[v4] = (y[v1] + y[v2] + y[v3])/3.0
+    
+
+     
     vxALE = vx - vxMesh
     vyALE = vy - vyMesh
    
