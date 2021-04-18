@@ -689,8 +689,8 @@ class Element2D:
      _self.kyx[i][j] += dNdy[k][i]*dNdx[k][j]*jacobian[k]*_self.GQWeights[k]/2.0
      _self.kyy[i][j] += dNdy[k][i]*dNdy[k][j]*jacobian[k]*_self.GQWeights[k]/2.0
     
-     _self.gx[i][j] += dNdx[k][j]*N[k][i]*jacobian[k]*_self.GQWeights[k]/2.0
-     _self.gy[i][j] += dNdy[k][j]*N[k][i]*jacobian[k]*_self.GQWeights[k]/2.0
+     _self.gx[i][j] += dNdx[k][i]*N[k][j]*jacobian[k]*_self.GQWeights[k]/2.0
+     _self.gy[i][j] += dNdy[k][i]*N[k][j]*jacobian[k]*_self.GQWeights[k]/2.0
     
      _self.dx[i][j] += dNdx[k][j]*N[k][i]*jacobian[k]*_self.GQWeights[k]/2.0
      _self.dy[i][j] += dNdy[k][j]*N[k][i]*jacobian[k]*_self.GQWeights[k]/2.0
@@ -1124,7 +1124,7 @@ class Element2D:
 				  [1, _self.x[k], _self.y[k]]]))
 
 
-  zz    = (1.0/(4.0*A))*(bj*bj + bk*bk + bj*bk + cj*cj + ck*ck + cj*ck)
+  zz    = (1.0/(4.0*A))*(bj*bj + bj*bk + bk*bk + cj*cj + cj*ck + ck*ck)
   zzx   = (1.0/(4.0*A))*(bj*bj + bj*bk + bk*bk)
   zzy   = (1.0/(4.0*A))*(cj*cj + cj*ck + ck*ck)
   zzxy  = (1.0/(4.0*A))*(bj*cj + bk*ck + 0.5*bj*ck + 0.5*bk*cj)
@@ -1212,6 +1212,9 @@ class Element2D:
                                          [ck*bi,ck*bj,ck*bk]])
 
 
+  _self.kLinear = _self.kxxLinear + _self.kyyLinear
+
+
   _self.kxx = np.zeros([4,4], dtype = float)
   _self.kxx[0,0]   = _self.kxxLinear[0][0] + (9./10)*zzx
   _self.kxx[0,1]   = _self.kxxLinear[0][1] + (9./10)*zzx
@@ -1284,6 +1287,24 @@ class Element2D:
   _self.kyx[3,2]   = - (27./40)*zzyx
   _self.kyx[3,3]   = - (81./40)*zzyx
 
+
+  _self.k = np.zeros([4,4], dtype = float)
+  _self.k[0,0]   = _self.kLinear[0][0] + (9./10)*zz
+  _self.k[0,1]   = _self.kLinear[0][1] + (9./10)*zz
+  _self.k[0,2]   = _self.kLinear[0][2] + (9./10)*zz
+  _self.k[1,0]   = _self.kLinear[1][0] + (9./10)*zz
+  _self.k[1,1]   = _self.kLinear[1][1] + (9./10)*zz
+  _self.k[1,2]   = _self.kLinear[1][2] + (9./10)*zz
+  _self.k[2,0]   = _self.kLinear[2][0] + (9./10)*zz
+  _self.k[2,1]   = _self.kLinear[2][1] + (9./10)*zz
+  _self.k[2,2]   = _self.kLinear[2][2] + (9./10)*zz
+  _self.k[0,3]   = - (27./10)*zz
+  _self.k[1,3]   = - (27./10)*zz
+  _self.k[2,3]   = - (27./10)*zz
+  _self.k[3,0]   = - (27./10)*zz
+  _self.k[3,1]   = - (27./10)*zz
+  _self.k[3,2]   = - (27./10)*zz
+  _self.k[3,3]   =   (81./40)*zz
 
 
 

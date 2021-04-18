@@ -202,11 +202,12 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
   velocityFreedomDegree  = mesh.velocityFreedomDegree
   pressureFreedomDegree  = mesh.pressureFreedomDegree
   numPhysical            = mesh.numPhysical 
-  Re = 50.0
+
+  Re = 1.0
   Sc = 1.0
   CFL = 0.5
   dt = float(CFL*minLengthMesh)
-  #dt = 0.5   #linear result ok 
+  #dt = 0.1   #linear result ok 
 
 
 
@@ -299,7 +300,6 @@ Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.NS2D(simula
 #numpy
 Kxx = Kxx.todense()
 Kyy = Kyy.todense()
-K   = K.todense()
 M   = M.todense()
 Gx  = Gx.todense()
 Gy  = Gy.todense()
@@ -311,12 +311,13 @@ D = G.transpose()
 
 Z = np.zeros([numVerts,numVerts], dtype=float)
 
-# [ (M/dt) + K             Gx]
-# [            (M/dt) + K  Gy]
-# [     Dx          Dy     0 ]
 
-A = np.block([[(M/dt)+(1./Re)*(Kxx+Kyy),  -G],              
-              [      D                 ,   Z]])             
+# [ (M/dt) + (1/Re)*K                     Gx]
+# [                    (M/dt) + (1/Re)*K  Gy]
+# [        Dx                Dy           0 ]
+
+A = np.block([[(M/dt) + (1./Re)*(Kxx+Kyy),  G],              
+              [       -D                 ,  Z]])             
                                                            
 
 
@@ -364,17 +365,68 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
  #gaussianElimination.gaussianElimination(A, xVelocityBC.dirichletNodes, yVelocityBC.dirichletNodes, pressureBC.dirichletNodes, neighborsNodes, neighborsNodesPressure, xVelocityBC.aux1BC, yVelocityBC.aux1BC, pressureBC.aux1BC)
  #LHS = gaussianElimination.LHS
 
+
+ # ----
  for i in xVelocityBC.dirichletNodes:
   A[i,:] = 0.0 
   A[i,i] = 1.0 
-
+ 
  for i in yVelocityBC.dirichletNodes:
   A[i + numNodes,:] = 0.0 
   A[i + numNodes,i + numNodes] = 1.0 
-
+ 
  for i in pressureBC.dirichletNodes:
   A[i + 2*numNodes,:] = 0.0 
   A[i + 2*numNodes,i + 2*numNodes] = 1.0 
+ # ----
+
+
+ ##Gaussian Elimination
+ ##xVelocity
+ #xVelocityBC_dirichletVector = np.zeros([numNodes,1], dtype = float)
+ #xVelocityBC_aux2BC = np.ones([numNodes,1], dtype = float)
+ #for mm in xVelocityBC.dirichletNodes:
+ # for nn in neighborsNodes[mm]: 
+ #  xVelocityBC_dirichletVector[nn] += float(A[nn,mm]*xVelocityBC.aux1BC[mm])
+ #  A[nn,mm] = 0.0
+ #  A[mm,nn] = 0.0 
+ # A[mm,mm] = 1.0
+ # xVelocityBC_dirichletVector[mm] = xVelocityBC.aux1BC[mm]
+ # xVelocityBC_aux2BC[mm] = 0.0 
+
+ ##yVelocity
+ #yVelocityBC_dirichletVector = np.zeros([numNodes,1], dtype = float)
+ #yVelocityBC_aux2BC = np.ones([numNodes,1], dtype = float)
+ #for mm in yVelocityBC.dirichletNodes:
+ # for nn in neighborsNodes[mm]: 
+ #  yVelocityBC_dirichletVector[nn] += float(A[nn + numNodes,mm + numNodes]*yVelocityBC.aux1BC[mm])
+ #  A[nn + numNodes,mm + numNodes] = 0.0
+ #  A[mm + numNodes,nn + numNodes] = 0.0 
+ # A[mm + numNodes,mm + numNodes] = 1.0
+ # yVelocityBC_dirichletVector[mm] = yVelocityBC.aux1BC[mm]
+ # yVelocityBC_aux2BC[mm] = 0.0 
+
+
+ ##pressure
+ #pressureBC_dirichletVector = np.zeros([numVerts,1], dtype = float)
+ #pressureBC_aux2BC = np.ones([numVerts,1], dtype = float)
+ #for mm in pressureBC.dirichletNodes:
+ # for nn in neighborsNodesPressure[mm]:
+ #  pressureBC_dirichletVector[nn] += float(A[nn + 2*numNodes,mm + 2*numNodes]*pressureBC.aux1BC[mm])
+ #  A[nn + 2*numNodes,mm + 2*numNodes] = 0.0
+ #  A[mm + 2*numNodes,nn + 2*numNodes] = 0.0 
+ # A[mm + 2*numNodes,mm + 2*numNodes] = 1.0
+ # pressureBC_dirichletVector[mm] = pressureBC.aux1BC[mm]
+ # pressureBC_aux2BC[mm] = 0.0 
+
+ #dirichletVector = np.concatenate((xVelocityBC_dirichletVector,yVelocityBC_dirichletVector),axis=0)
+ #dirichletVector = np.concatenate((dirichletVector,pressureBC_dirichletVector),axis=0)
+
+ #aux2BC = np.concatenate((xVelocityBC_aux2BC,yVelocityBC_aux2BC),axis=0)
+ #aux2BC = np.concatenate((aux2BC,pressureBC_aux2BC),axis=0)
+
+
+
 
 
 # Quad Element
@@ -782,26 +834,6 @@ for t in tqdm(range(1, nt)):
   #print gaussianElimination.aux2BC[21] 
   #print gaussianElimination.dirichletVector[21]
 
-  #RHS = np.dot((M/dt),np.concatenate((vx_d,vy_d),axis=0))
-  #RHS = np.concatenate((RHS,(np.zeros([numVerts,1],dtype = float))),axis=0)
-  #RHS = np.multiply(RHS,gaussianElimination.aux2BC)
-  #RHS = RHS + gaussianElimination.dirichletVector
-  #sol = np.linalg.solve(LHS,RHS)
-
-  b = np.dot(M/dt,np.concatenate((vx_d,vy_d),axis=0))
-  #b = np.dot(M/dt,np.concatenate((vx,vy),axis=0))
-  bp = np.zeros([numVerts,1], dtype = float)
-  b = np.concatenate((b,bp),axis=0)
-
-  for i in xVelocityBC.dirichletNodes:
-   b[i] = xVelocityBC.aux1BC[i]
-
-  for i in yVelocityBC.dirichletNodes:
-   b[i + numNodes] = yVelocityBC.aux1BC[i]
-
-  for i in pressureBC.dirichletNodes:
-   b[i + 2*numNodes] = pressureBC.aux1BC[i]
-
   #print np.linalg.norm(A)
   #print np.linalg.norm(xVelocityBC.aux1BC)
   #print np.linalg.norm(yVelocityBC.aux1BC)
@@ -810,6 +842,37 @@ for t in tqdm(range(1, nt)):
   #print yVelocityBC.dirichletNodes
   #print pressureBC.dirichletNodes
 
+
+  #RHS = np.dot((M/dt),np.concatenate((vx_d,vy_d),axis=0))
+  #RHS = np.concatenate((RHS,(np.zeros([numVerts,1],dtype = float))),axis=0)
+  #RHS = np.multiply(RHS,gaussianElimination.aux2BC)
+  #RHS = RHS + gaussianElimination.dirichletVector
+  #sol = np.linalg.solve(LHS,RHS)
+
+
+
+
+
+  #b = np.dot(M/dt,np.concatenate((vx,vy),axis=0))
+  b = np.dot(M/dt,np.concatenate((vx_d,vy_d),axis=0))
+  bp = np.zeros([numVerts,1], dtype = float)
+  b = np.concatenate((b,bp),axis=0)
+  
+
+  # ----
+  for i in xVelocityBC.dirichletNodes:
+   b[i] = xVelocityBC.aux1BC[i]
+  
+  for i in yVelocityBC.dirichletNodes:
+   b[i + numNodes] = yVelocityBC.aux1BC[i]
+  
+  for i in pressureBC.dirichletNodes:
+   b[i + 2*numNodes] = pressureBC.aux1BC[i]
+  # ----
+
+  
+  #b = np.multiply(b,aux2BC)
+  #b = b - dirichletVector 
 
 
   sol = np.linalg.solve(A,b)
