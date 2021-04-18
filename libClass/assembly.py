@@ -349,13 +349,13 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
       Kxy[ii,jj] += element2D.kxy[i][j]
       Kyx[ii,jj] += element2D.kyx[i][j]
       Kyy[ii,jj] += element2D.kyy[i][j]
-      #K[ii,jj] += element2D.k[i][j]
+      K[ii,jj] += element2D.kxx[i][j] + element2D.kyy[i][j]
 
       Kxx[ii + _numNodes,jj + _numNodes] += element2D.kxx[i][j]
       Kxy[ii + _numNodes,jj + _numNodes] += element2D.kxy[i][j]
       Kyx[ii + _numNodes,jj + _numNodes] += element2D.kyx[i][j]
       Kyy[ii + _numNodes,jj + _numNodes] += element2D.kyy[i][j]
-      #K[ii + _numNodes,jj + _numNodes] += element2D.k[i][j]
+      K[ii + _numNodes,jj + _numNodes] += element2D.kxx[i][j] + element2D.kyy[i][j]
  
   
       M[ii,jj] += element2D.mass[i][j]

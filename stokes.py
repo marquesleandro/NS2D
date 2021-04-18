@@ -202,11 +202,11 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
   velocityFreedomDegree  = mesh.velocityFreedomDegree
   pressureFreedomDegree  = mesh.pressureFreedomDegree
   numPhysical            = mesh.numPhysical 
-  Re = 50.0
+  Re = 100.0
   Sc = 1.0
   CFL = 0.5
   dt = float(CFL*minLengthMesh)
-  #dt = 0.5   #linear result ok 
+  #dt = 0.01   #linear result ok 
 
 
 
