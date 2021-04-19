@@ -491,111 +491,6 @@ class quadStent:
 
 
 
-
-class Cavity:
-
- # ------------------------------------------------------------------------------------------------------
- # Use:
-
- # # Applying vx condition
- # condition_xvelocity = bc_apply.Cavity(mesh.nphysical,mesh.npoints,mesh.x,mesh.y)
- # condition_xvelocity.neumann_condition(mesh.neumann_edges[1])
- # condition_xvelocity.dirichlet_condition(mesh.dirichlet_pts[1])
- # condition_xvelocity.gaussian_elimination(LHS_vx0,mesh.neighbors_nodes)
- # vorticity_ibc = condition_xvelocity.ibc
-
- # # Applying vy condition
- # condition_yvelocity = bc_apply.Cavity(mesh.nphysical,mesh.npoints,mesh.x,mesh.y)
- # condition_yvelocity.neumann_condition(mesh.neumann_edges[2])
- # condition_yvelocity.dirichlet_condition(mesh.dirichlet_pts[2])
- # condition_yvelocity.gaussian_elimination(LHS_vy0,mesh.neighbors_nodes)
-
- # # Applying psi condition
- # condition_streamfunction = bc_apply.Cavity(mesh.nphysical,mesh.npoints,mesh.x,mesh.y)
- # condition_streamfunction.neumann_condition(mesh.neumann_edges[3])
- # condition_streamfunction.dirichlet_condition(mesh.dirichlet_pts[3])
- # condition_streamfunction.gaussian_elimination(LHS_psi0,mesh.neighbors_nodes)
- # ------------------------------------------------------------------------------------------------------
-
-
- def __init__(_self, _nphysical, _npoints, _x, _y):
-  _self.nphysical = _nphysical
-  _self.npoints = _npoints
-  _self.x = _x
-  _self.y = _y
-  _self.bc = np.zeros([_self.nphysical,1], dtype = float) 
-  _self.benchmark_problem = 'Cavity'
-
-  # Velocity vx condition - pg. 7
-  _self.bc[0][0] = 0.0 
-  _self.bc[1][0] = 1.0
-
-  # Velocity vy condition - pg. 7
-  _self.bc[2][0] = 0.0
-  _self.bc[3][0] = 0.0
-
-  # Streamline condition - pg. 7
-  _self.bc[4][0] = 0.0
-
-
-
- def neumann_condition(_self, _neumann_edges):
-  _self.bc_neumann = np.zeros([_self.npoints,1], dtype = float) 
-  _self.neumann_edges = _neumann_edges 
- 
-  for i in range(0, len(_self.neumann_edges)):
-   line = _self.neumann_edges[i][0] - 1
-   v1 = _self.neumann_edges[i][1] - 1
-   v2 = _self.neumann_edges[i][2] - 1
-
-   x = _self.x[v1] - _self.x[v2]
-   y = _self.y[v1] - _self.y[v2]
-   length = np.sqrt(x**2 + y**2)
-  
-   _self.bc_neumann[v1] += (_self.bc[line]*length) / 2. 
-   _self.bc_neumann[v2] += (_self.bc[line]*length) / 2. 
-
-
- def dirichlet_condition(_self, _dirichlet_pts):
-  _self.bc_dirichlet = np.zeros([_self.npoints,1], dtype = float) 
-  _self.ibc = [] 
-  _self.bc_1 = np.zeros([_self.npoints,1], dtype = float) #For scipy array solve
-  _self.dirichlet_pts = _dirichlet_pts
- 
-
-  for i in range(0, len(_self.dirichlet_pts)):
-   line = _self.dirichlet_pts[i][0] - 1
-   v1 = _self.dirichlet_pts[i][1] - 1
-   v2 = _self.dirichlet_pts[i][2] - 1
-
-   _self.bc_1[v1] = _self.bc[line]
-   _self.bc_1[v2] = _self.bc[line]
-
-   _self.bc_neumann[v1] = 0.0 #Dirichlet condition is preferential
-   _self.bc_neumann[v2] = 0.0 #Dirichlet condition is preferential
-
-   _self.ibc.append(v1)
-   _self.ibc.append(v2)
-   
-  _self.ibc = np.unique(_self.ibc)
-
-
- def gaussian_elimination(_self, _LHS0, _neighbors_nodes):
-  _self.LHS = sps.lil_matrix.copy(_LHS0)
-  _self.bc_2 = np.ones([_self.npoints,1], dtype = float) 
-  _self.neighbors_nodes = _neighbors_nodes
-
-  for mm in _self.ibc:
-   for nn in _self.neighbors_nodes[mm]:
-    _self.bc_dirichlet[nn] -= float(_self.LHS[nn,mm]*_self.bc_1[mm])
-    _self.LHS[nn,mm] = 0.0
-    _self.LHS[mm,nn] = 0.0
-   
-   _self.LHS[mm,mm] = 1.0
-   _self.bc_dirichlet[mm] = _self.bc_1[mm]
-   _self.bc_2[mm] = 0.0
- 
-
 class Convection2D:
 
  # ------------------------------------------------------------------------------------------------------
@@ -1778,6 +1673,223 @@ class NS2D:
    _self.LHS[mm + 2*_self.numNodes,mm + 2*_self.numNodes] = 1.0
    _self.dirichletVector[mm + 2*_self.numNodes] = _self.aux1BCPressure[mm]
    _self.aux2BC[mm + 2*_self.numNodes] = 0.0
+
+
+class Cavity:
+
+ # ------------------------------------------------------------------------------------------------------
+ # Use:
+
+ # # Applying vx condition
+ # condition_xvelocity = bc_apply.Half_Cavity(mesh.nphysical,mesh.npoints,mesh.x,mesh.y)
+ # condition_xvelocity.neumann_condition(mesh.neumann_edges[1])
+ # condition_xvelocity.dirichlet_condition(mesh.dirichlet_pts[1])
+ # condition_xvelocity.gaussian_elimination(LHS_vx0,mesh.neighbors_nodes)
+ # vorticity_ibc = condition_xvelocity.ibc
+
+ # # Applying vy condition
+ # condition_yvelocity = bc_apply.Half_Cavity(mesh.nphysical,mesh.npoints,mesh.x,mesh.y)
+ # condition_yvelocity.neumann_condition(mesh.neumann_edges[2])
+ # condition_yvelocity.dirichlet_condition(mesh.dirichlet_pts[2])
+ # condition_yvelocity.gaussian_elimination(LHS_vy0,mesh.neighbors_nodes)
+
+ # # Applying psi condition
+ # condition_streamfunction = bc_apply.Half_Cavity(mesh.nphysical,mesh.npoints,mesh.x,mesh.y)
+ # condition_streamfunction.streamfunction_condition(mesh.dirichlet_pts[3],LHS_psi0,mesh.neighbors_nodes)
+ # ------------------------------------------------------------------------------------------------------
+
+
+ def __init__(_self, _numPhysical, _numNodes, _x, _y):
+  _self.numPhysical = _numPhysical
+  _self.numNodes = _numNodes
+  _self.x = _x
+  _self.y = _y
+  _self.wallVelocity = 1.0
+  _self.benchmark_problem = 'linear Cavity'
+
+
+ def xVelocityCondition(_self, _boundaryEdges, _LHS0, _neighborsNodes):
+  _self.dirichletVector = np.zeros([_self.numNodes,1], dtype = float) 
+  _self.dirichletNodes = [] 
+  _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
+  _self.aux2BC = np.ones([_self.numNodes,1], dtype = float) 
+  _self.LHS = sps.lil_matrix.copy(_LHS0)
+  _self.boundaryEdges = _boundaryEdges
+  _self.neighborsNodes = _neighborsNodes
+
+ # Dirichlet condition
+  for i in range(0, len(_self.boundaryEdges)):
+   line = _self.boundaryEdges[i][0]
+   v1 = _self.boundaryEdges[i][1] - 1
+   v2 = _self.boundaryEdges[i][2] - 1
+
+   # Noslip 
+   if line == 1 or line == 2 or line == 4:
+    _self.aux1BC[v1] = 0.0
+    _self.aux1BC[v2] = 0.0
+ 
+    _self.dirichletNodes.append(v1)
+    _self.dirichletNodes.append(v2)
+
+   # Moving Wall
+   elif line == 3:
+    _self.aux1BC[v1] = _self.wallVelocity
+    _self.aux1BC[v2] = _self.wallVelocity
+
+    _self.dirichletNodes.append(v1)
+    _self.dirichletNodes.append(v2)
+
+  _self.dirichletNodes = np.unique(_self.dirichletNodes)
+
+
+  # Gaussian elimination for vx
+  for mm in _self.dirichletNodes:
+   for nn in _self.neighborsNodes[mm]:
+    _self.dirichletVector[nn] -= float(_self.LHS[nn,mm]*_self.aux1BC[mm])
+    _self.LHS[nn,mm] = 0.0
+    _self.LHS[mm,nn] = 0.0
+   
+   _self.LHS[mm,mm] = 1.0
+   _self.dirichletVector[mm] = _self.aux1BC[mm]
+   _self.aux2BC[mm] = 0.0
+ 
+
+
+
+ def yVelocityCondition(_self, _boundaryEdges, _LHS0, _neighborsNodes):
+  _self.dirichletVector = np.zeros([_self.numNodes,1], dtype = float) 
+  _self.dirichletNodes = [] 
+  _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
+  _self.aux2BC = np.ones([_self.numNodes,1], dtype = float) 
+  _self.LHS = sps.lil_matrix.copy(_LHS0)
+  _self.boundaryEdges = _boundaryEdges
+  _self.neighborsNodes = _neighborsNodes
+
+ # Dirichlet condition
+  for i in range(0, len(_self.boundaryEdges)):
+   line = _self.boundaryEdges[i][0]
+   v1 = _self.boundaryEdges[i][1] - 1
+   v2 = _self.boundaryEdges[i][2] - 1
+
+   # Noslip 
+   if line == 1 or line == 2 or line == 4:
+    _self.aux1BC[v1] = 0.0
+    _self.aux1BC[v2] = 0.0
+ 
+    _self.dirichletNodes.append(v1)
+    _self.dirichletNodes.append(v2)
+
+   # Moving Wall
+   elif line == 3:
+    _self.aux1BC[v1] = 0.0
+    _self.aux1BC[v2] = 0.0
+
+    _self.dirichletNodes.append(v1)
+    _self.dirichletNodes.append(v2)
+
+  _self.dirichletNodes = np.unique(_self.dirichletNodes)
+
+
+  # Gaussian elimination for vy
+  for mm in _self.dirichletNodes:
+   for nn in _self.neighborsNodes[mm]:
+    _self.dirichletVector[nn] -= float(_self.LHS[nn,mm]*_self.aux1BC[mm])
+    _self.LHS[nn,mm] = 0.0
+    _self.LHS[mm,nn] = 0.0
+   
+   _self.LHS[mm,mm] = 1.0
+   _self.dirichletVector[mm] = _self.aux1BC[mm]
+   _self.aux2BC[mm] = 0.0
+ 
+
+
+ def streamFunctionCondition(_self, _boundaryEdges, _LHS0, _neighborsNodes):
+  _self.dirichletVector = np.zeros([_self.numNodes,1], dtype = float) 
+  _self.dirichletNodes = [] 
+  _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
+  _self.aux2BC = np.ones([_self.numNodes,1], dtype = float) 
+  _self.LHS = sps.csr_matrix.copy(_LHS0) #used csr matrix because LHS = lil_matrix + lil_matrix
+  _self.boundaryEdges = _boundaryEdges
+  _self.neighborsNodes = _neighborsNodes
+
+ # Dirichlet condition
+  for i in range(0, len(_self.boundaryEdges)):
+   line = _self.boundaryEdges[i][0]
+   v1 = _self.boundaryEdges[i][1] - 1
+   v2 = _self.boundaryEdges[i][2] - 1
+
+   # Bottom Line
+   # psi_bottom can be any value. Because, important is psi_top - psi_bottom.
+   # In this case, psi_bottom is zero
+   if line == 1:
+    _self.aux1BC[v1] = 0.0
+    _self.aux1BC[v2] = 0.0
+ 
+    _self.dirichletNodes.append(v1)
+    _self.dirichletNodes.append(v2)
+
+   # Top Line
+   # Ref: Batchelor 1967 pag. 76 eq. 2.2.8
+   # psi_top is also zero, because the volume mass flux is null
+   elif line == 3:
+    _self.aux1BC[v1] = 0.0
+    _self.aux1BC[v2] = 0.0
+
+    _self.dirichletNodes.append(v1)
+    _self.dirichletNodes.append(v2)
+
+
+   # Right and Left lines
+   # psi is also zero, because the volume mass flux is null
+   elif line == 2 or line == 4:
+    _self.aux1BC[v1] = 0.0
+    _self.aux1BC[v2] = 0.0
+
+    _self.dirichletNodes.append(v1)
+    _self.dirichletNodes.append(v2)
+
+
+  _self.dirichletNodes = np.unique(_self.dirichletNodes)
+
+
+  # Gaussian elimination for psi
+  for mm in _self.dirichletNodes:
+   for nn in _self.neighborsNodes[mm]:
+    _self.dirichletVector[nn] -= float(_self.LHS[nn,mm]*_self.aux1BC[mm])
+    _self.LHS[nn,mm] = 0.0
+    _self.LHS[mm,nn] = 0.0
+   
+   _self.LHS[mm,mm] = 1.0
+   _self.dirichletVector[mm] = _self.aux1BC[mm]
+   _self.aux2BC[mm] = 0.0
+ 
+
+
+ def pressureCondition(_self, _boundaryEdges, _LHS0, _neighborsNodes):
+  _self.dirichletVector = np.zeros([_self.numNodes,1], dtype = float) 
+  _self.dirichletNodes = [] 
+  _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
+  _self.aux2BC = np.ones([_self.numNodes,1], dtype = float) 
+  _self.LHS = sps.csr_matrix.copy(_LHS0) #used csr matrix because LHS = lil_matrix + lil_matrix
+  _self.boundaryEdges = _boundaryEdges
+  _self.neighborsNodes = _neighborsNodes
+
+  # Dirichlet condition
+  _self.aux1BC[0] = 0.0 # node (0,0) null pressure
+  _self.dirichletNodes.append(0)
+  _self.dirichletNodes = np.unique(_self.dirichletNodes)
+
+  # Gaussian elimination for pressure
+  for mm in _self.dirichletNodes:
+   for nn in _self.neighborsNodes[mm]:
+    _self.dirichletVector[nn] -= float(_self.LHS[nn,mm]*_self.aux1BC[mm])
+    _self.LHS[nn,mm] = 0.0
+    _self.LHS[mm,nn] = 0.0
+   
+   _self.LHS[mm,mm] = 1.0
+   _self.dirichletVector[mm] = _self.aux1BC[mm]
+   _self.aux2BC[mm] = 0.0
+ 
 
 
 
