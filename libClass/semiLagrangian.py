@@ -718,12 +718,13 @@ def Linear2D_v3(_npoints, _neighbors_nodes, _neighbors_elements, _IEN, _xn, _yn,
 
 
 # copied from SL linear 
-def Mini2D(_npoints, _neighbors_elements, _IEN, _xn, _yn, _vx, _vy, _dt, _scalar1, _scalar2):
+def Mini2D(_npoints, _neighbors_elements, _IEN, _xn, _yn, _vx, _vy, _dt, _scalar1, _scalar2, _scalar3):
  xd = _xn - _vx*_dt
  yd = _yn - _vy*_dt
  
  scalar1 = np.zeros([_npoints,1], dtype = float) 
  scalar2 = np.zeros([_npoints,1], dtype = float) 
+ scalar3 = np.zeros([_npoints,1], dtype = float) 
  
  for i in range(0,_npoints):
   x = float(xd[i])
@@ -794,8 +795,14 @@ def Mini2D(_npoints, _neighbors_elements, _IEN, _xn, _yn, _vx, _vy, _dt, _scalar
      scalar2c = _scalar2[v3]
      scalar2d = _scalar2[v4]
 
+     scalar3a = _scalar3[v1]
+     scalar3b = _scalar3[v2]
+     scalar3c = _scalar3[v3]
+     scalar3d = _scalar3[v4]
+
      scalar1[i] = N1*scalar1a + N2*scalar1b + N3*scalar1c + N4*scalar1d
      scalar2[i] = N1*scalar2a + N2*scalar2b + N3*scalar2c + N4*scalar2d
+     scalar3[i] = N1*scalar3a + N2*scalar3b + N3*scalar3c + N4*scalar3d
 
      breaking = 1
      break
@@ -840,12 +847,13 @@ def Mini2D(_npoints, _neighbors_elements, _IEN, _xn, _yn, _vx, _vy, _dt, _scalar
     if node == node1 and breaking == 0:
      scalar1[i] = _scalar1[node]
      scalar2[i] = _scalar2[node]
+     scalar3[i] = _scalar3[node]
      
      breaking = 1
      break
 
 
- return scalar1, scalar2
+ return scalar1, scalar2, scalar3
 
 
 

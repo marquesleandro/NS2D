@@ -303,9 +303,11 @@ Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.NS2D(simula
 #M   = M.todense()
 #Gx  = Gx.todense()
 #Gy  = Gy.todense()
+#
+#G = np.block([[Gx],
+#              [Gy]])
 
-G = sps.bmat([[Gx],
-              [Gy]])
+G = sps.bmat([[Gx],[Gy]])
 
 D = G.transpose()
 
@@ -314,13 +316,15 @@ D = G.transpose()
 # [            (M/dt) + K  Gy]
 # [     Dx          Dy     0 ]
 
+Z = sps.lil_matrix((numVerts,numVerts), dtype=float)
 B = (M/dt)+(1./Re)*(Kxx+Kyy)
-B = sps.csr_matrix.tolil(B)         
-G = sps.coo_matrix.tolil(G)         
-D = sps.coo_matrix.tolil(D)         
-A = sps.bmat([[B,  -G],              
-              [D,   None]], format='lil')             
+B = sps.csr_matrix.tolil(B)             
+G = sps.coo_matrix.tolil(G)             
+D = sps.coo_matrix.tolil(D)             
+A = sps.bmat([[B,-G],              
+              [D, Z]], format='lil')             
                                                            
+
 
 
 end_time = time()
@@ -377,53 +381,6 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
  for i in pressureBC.dirichletNodes:
   A[i + 2*numNodes,:] = 0.0 
   A[i + 2*numNodes,i + 2*numNodes] = 1.0 
-
-
- #xVelocityDirichletVector = np.zeros([numNodes,1], dtype = float)
- #xVelocityAux2BC = np.ones([numNodes,1], dtype = float)
- #for mm in xVelocityBC.dirichletNodes:
- # for nn in neighborsNodes[mm]:
- #  xVelocityDirichletVector[nn] -= float(A[nn,mm]*xVelocityBC.aux1BC[mm])
- #
- # A[:,mm] = 0.0
- # A[mm,:] = 0.0
- # A[mm,mm] = 1.0
- # xVelocityDirichletVector[mm] = xVelocityBC.aux1BC[mm]
- # xVelocityAux2BC[mm] = 0.0
-
-
- #yVelocityDirichletVector = np.zeros([numNodes,1], dtype = float)
- #yVelocityAux2BC = np.ones([numNodes,1], dtype = float)
- #for mm in yVelocityBC.dirichletNodes:
- # for nn in neighborsNodes[mm]:
- #  yVelocityDirichletVector[nn] -= float(A[nn + numNodes,mm + numNodes]*yVelocityBC.aux1BC[mm])
- # 
- # A[:,mm + numNodes] = 0.0
- # A[mm + numNodes,:] = 0.0
- # A[mm + numNodes,mm + numNodes] = 1.0
- # yVelocityDirichletVector[mm] = yVelocityBC.aux1BC[mm]
- # yVelocityAux2BC[mm] = 0.0
-
-
- #pressureDirichletVector = np.zeros([numVerts,1], dtype = float)
- #pressureAux2BC = np.ones([numVerts,1], dtype = float)
- #for mm in pressureBC.dirichletNodes:
- # for nn in neighborsNodesPressure[mm]:
- #  pressureDirichletVector[nn] -= float(A[nn + 2*numNodes,mm + 2*numNodes]*pressureBC.aux1BC[mm])
-
- # A[:,mm + 2*numNodes] = 0.0
- # A[mm + 2*numNodes,:] = 0.0
- # A[mm + 2*numNodes,mm + 2*numNodes] = 1.0
- # pressureDirichletVector[mm] = pressureBC.aux1BC[mm]
- # pressureAux2BC[mm] = 0.0
-
- #dirichletVector = np.concatenate((xVelocityDirichletVector,yVelocityDirichletVector),axis=0)
- #dirichletVector = np.concatenate((dirichletVector,pressureDirichletVector),axis=0)
-
- #aux2BC = np.concatenate((xVelocityAux2BC,yVelocityAux2BC),axis=0)
- #aux2BC = np.concatenate((aux2BC,pressureAux2BC),axis=0)
-
-
 
 
 # Quad Element
@@ -845,44 +802,27 @@ for t in tqdm(range(1, nt)):
   #---------- Step 1 - Solve the continuity and momentum equation ----------------------
   start_solver_time = time()
 
-  # ---- numpy
-  #b = np.dot(M/dt,np.concatenate((vx_d,vy_d),axis=0))
-  #b = np.dot(M/dt,np.concatenate((vx,vy),axis=0))  #stokes
-  #bp = np.zeros([numVerts,1], dtype = float)
-  #b = np.concatenate((b,bp),axis=0)
-
-  #for i in xVelocityBC.dirichletNodes:
-  # b[i] = xVelocityBC.aux1BC[i]
-
-  #for i in yVelocityBC.dirichletNodes:
-  # b[i + numNodes] = yVelocityBC.aux1BC[i]
-
-  #for i in pressureBC.dirichletNodes:
-  # b[i + 2*numNodes] = pressureBC.aux1BC[i]
-  
-  #sol = np.linalg.solve(A,b)
-  # ---- numpy
-
-  # ---- scipy
   AA = sps.lil_matrix.copy(M/dt)
-  b = sps.lil_matrix.dot(AA,(np.concatenate((vx_d,vy_d),axis=0)))
+  b = sps.lil_matrix.dot(AA,np.concatenate((vx_d,vy_d),axis=0))
   #b = np.dot(M/dt,np.concatenate((vx,vy),axis=0))  #stokes
   bp = np.zeros([numVerts,1], dtype = float)
   b = np.concatenate((b,bp),axis=0)
 
-  #b = np.multiply(b,aux2BC)
-  #b = b + dirichletVector
-  print '1 ok'
-  sol = scipy.sparse.linalg.cg(A,b, sol, maxiter=1.0e+02, tol=1.0e-03)
-  print '2 ok'
+  for i in xVelocityBC.dirichletNodes:
+   b[i] = xVelocityBC.aux1BC[i]
+
+  for i in yVelocityBC.dirichletNodes:
+   b[i + numNodes] = yVelocityBC.aux1BC[i]
+
+  for i in pressureBC.dirichletNodes:
+   b[i + 2*numNodes] = pressureBC.aux1BC[i]
+
+  sol = sps.linalg.cg(A,b,sol, maxiter=1.0e+03, tol=1.0e-03)
   sol = sol[0].reshape((len(sol[0]),1))
-  print '3 ok'
-  # ---- scipy
 
   vx = sol[0:numNodes]
   vy = sol[numNodes:2*numNodes]
   p  = sol[2*numNodes:]
-  print '4 ok'
 
   end_solver_time = time()
   solver_time = end_solver_time - start_solver_time

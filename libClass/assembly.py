@@ -302,6 +302,15 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
  Gx = sps.lil_matrix((_numNodes,_numVerts), dtype = float)
  Gy = sps.lil_matrix((_numNodes,_numVerts), dtype = float)
 
+ KxxMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ KxyMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ KyxMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ KyyMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ KMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ MMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ MLumpMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ GxMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ GyMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
 
  element2D = gaussianQuadrature.Element2D(_x, _y, _IEN, _GAUSSPOINTS)
 
@@ -363,6 +372,20 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
  
       M[ii + _numNodes,jj + _numNodes] += element2D.mass[i][j]
       MLump[ii + _numNodes,ii + _numNodes] += element2D.mass[i][j]
+
+      KxxMini[ii,jj] += element2D.kxx[i][j]
+      KxyMini[ii,jj] += element2D.kxy[i][j]
+      KyxMini[ii,jj] += element2D.kyx[i][j]
+      KyyMini[ii,jj] += element2D.kyy[i][j]
+      KMini[ii,jj] += element2D.kxx[i][j] + element2D.kyy[i][j]
+
+      MMini[ii,jj] += element2D.mass[i][j]
+      MLumpMini[ii,ii] += element2D.mass[i][j]
+ 
+      GxMini[ii,jj] += element2D.gx[i][j]
+      GyMini[ii,jj] += element2D.gy[i][j]
+ 
+
  
      for j in range(0,_pressureFD):
       jj = _IEN[e][j]
@@ -468,8 +491,19 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
   MLump = MLump*1.0
   Gx =  Gx*1.0 
   Gy =  Gy*1.0 
+
+  KxxMini = Kxx*1.0 
+  KxyMini = Kxy*1.0
+  KyxMini = Kyx*1.0
+  KyyMini = Kyy*1.0
+  KMini =   K*1.0
+  MMini =   M*1.0
+  MLumpMini = MLump*1.0
+  GxMini =  Gx*1.0 
+  GyMini =  Gy*1.0 
  
- return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order
+ 
+ return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, MLumpMini, GxMini, GyMini, polynomial_order
 
 
 
