@@ -154,7 +154,8 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
  #mshFileName = 'linearHalfPoiseuille.msh'
  #mshFileName = 'linearStraightGeo.msh'
  #mshFileName = 'poiseuille.msh'
- mshFileName = 'poiseuilleV2.msh'
+ #mshFileName = 'poiseuilleV2.msh'
+ mshFileName = 'CurvedGeoStrut.msh'
 
  pathMSHFile = searchMSH.Find(mshFileName)
  if pathMSHFile == 'File not found':
@@ -354,20 +355,20 @@ start_time = time()
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
 
  # Applying vx condition
- xVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+ xVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
  xVelocityBC.xVelocityCondition(boundaryEdges,neighborsNodes)
  benchmark_problem = xVelocityBC.benchmark_problem
 
  # Applying vy condition
- yVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+ yVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
  yVelocityBC.yVelocityCondition(boundaryEdges,neighborsNodes)
  
  # Applying pressure condition
- pressureBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+ pressureBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
  pressureBC.pressureCondition(boundaryEdges,neighborsNodesPressure)
 
  # Applying concentration condition
- concentrationBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes, numVerts,x,y)
+ concentrationBC = benchmarkProblems.NS2DStent(numPhysical,numNodes, numVerts,x,y)
  concentrationBC.concentrationCondition(boundaryEdges,neighborsNodes)
 
  for i in xVelocityBC.dirichletNodes:
@@ -665,7 +666,7 @@ for t in tqdm(range(1, nt)):
     
      # Applying vx condition
      start_xVelocityBC_time = time()
-     xVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+     xVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
      xVelocityBC.xVelocityCondition(boundaryEdges,neighborsNodes)
      benchmark_problem = xVelocityBC.benchmark_problem
      end_xVelocityBC_time = time()
@@ -674,7 +675,7 @@ for t in tqdm(range(1, nt)):
      
      # Applying vy condition
      start_yVelocityBC_time = time()
-     yVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+     yVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
      yVelocityBC.yVelocityCondition(boundaryEdges,neighborsNodes)
      end_yVelocityBC_time = time()
      yVelocityBC_time = end_yVelocityBC_time - start_yVelocityBC_time
@@ -682,7 +683,7 @@ for t in tqdm(range(1, nt)):
      
      # Applying pressure condition
      start_pressureBC_time = time()
-     pressureBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+     pressureBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
      pressureBC.pressureCondition(boundaryEdges,neighborsNodesPressure)
      end_pressureBC_time = time()
      pressureBC_time = end_pressureBC_time - start_pressureBC_time
@@ -690,7 +691,7 @@ for t in tqdm(range(1, nt)):
      
      # Applying concentration condition
      start_concentrationBC_time = time()
-     concentrationBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes, numVerts,x,y)
+     concentrationBC = benchmarkProblems.NS2DStent(numPhysical,numNodes, numVerts,x,y)
      concentrationBC.concentrationCondition(boundaryEdges,neighborsNodes)
      end_concentrationBC_time = time()
      concentrationBC_time = end_concentrationBC_time - start_concentrationBC_time
