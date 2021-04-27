@@ -492,15 +492,15 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
   Gx =  Gx*1.0 
   Gy =  Gy*1.0 
 
-  KxxMini = Kxx*1.0 
-  KxyMini = Kxy*1.0
-  KyxMini = Kyx*1.0
-  KyyMini = Kyy*1.0
-  KMini =   K*1.0
-  MMini =   M*1.0
-  MLumpMini = MLump*1.0
-  GxMini =  Gx*1.0 
-  GyMini =  Gy*1.0 
+  KxxMini = KxxMini*1.0 
+  KxyMini = KxyMini*1.0
+  KyxMini = KyxMini*1.0
+  KyyMini = KyyMini*1.0
+  KMini =   KMini*1.0
+  MMini =   MMini*1.0
+  MLumpMini = MLumpMini*1.0
+  GxMini =  GxMini*1.0 
+  GyMini =  GyMini*1.0 
  
  
  return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, MLumpMini, GxMini, GyMini, polynomial_order
