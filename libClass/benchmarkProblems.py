@@ -1318,132 +1318,6 @@ class NS2DPoiseuille:
 
   _self.dirichletNodes = np.unique(_self.dirichletNodes)
 
-class AxiNS2DStent:
-
- def __init__(_self, _numPhysical, _numNodes, _numVerts, _x, _y):
-  _self.numPhysical = _numPhysical
-  _self.numNodes = _numNodes
-  _self.numVerts = _numVerts
-  _self.x = _x
-  _self.y = _y
-  _self.maxVx = 2.0
-  _self.L = 1.0
-  _self.benchmark_problem = 'NS2D Stent'
-
-
- def xVelocityCondition(_self, _boundaryEdges, _neighborsNodes):
-  _self.dirichletNodes = [] 
-  _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
-  _self.boundaryEdges = _boundaryEdges
-  _self.neighborsNodes = _neighborsNodes
-
- # Dirichlet condition
-  for i in range(0, len(_self.boundaryEdges)):
-   line = _self.boundaryEdges[i][0]
-   v1 = _self.boundaryEdges[i][1] - 1
-   v2 = _self.boundaryEdges[i][2] - 1
-
-   # Noslip 
-   if line == 1 or line == 5:
-    _self.aux1BC[v1] = 0.0
-    _self.aux1BC[v2] = 0.0
- 
-    _self.dirichletNodes.append(v1)
-    _self.dirichletNodes.append(v2)
-
-   # Inflow
-   elif line == 3:
-    _self.aux1BC[v1] = _self.maxVx*(1.0 - (_self.y[v1]/_self.L)**2)
-    _self.aux1BC[v2] = _self.maxVx*(1.0 - (_self.y[v2]/_self.L)**2)
-
-    _self.dirichletNodes.append(v1)
-    _self.dirichletNodes.append(v2)
-
-  _self.dirichletNodes = np.unique(_self.dirichletNodes)
-
-
-
- def yVelocityCondition(_self, _boundaryEdges, _neighborsNodes):
-  _self.dirichletNodes = [] 
-  _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
-  _self.boundaryEdges = _boundaryEdges
-  _self.neighborsNodes = _neighborsNodes
-
- # Dirichlet condition
-  for i in range(0, len(_self.boundaryEdges)):
-   line = _self.boundaryEdges[i][0]
-   v1 = _self.boundaryEdges[i][1] - 1
-   v2 = _self.boundaryEdges[i][2] - 1
-
-   # Noslip 
-   if line == 1 or line == 4 or line == 5:
-    _self.aux1BC[v1] = 0.0
-    _self.aux1BC[v2] = 0.0
- 
-    _self.dirichletNodes.append(v1)
-    _self.dirichletNodes.append(v2)
-
-   # Inflow
-   elif line == 3:
-    _self.aux1BC[v1] = 0.0
-    _self.aux1BC[v2] = 0.0
-
-    _self.dirichletNodes.append(v1)
-    _self.dirichletNodes.append(v2)
-
-  _self.dirichletNodes = np.unique(_self.dirichletNodes)
-
-
-
- def pressureCondition(_self, _boundaryEdges, _neighborsNodes):
-  _self.dirichletNodes = [] 
-  _self.aux1BC = np.zeros([_self.numVerts,1], dtype = float) #For scipy array solve
-  _self.boundaryEdges = _boundaryEdges
-  _self.neighborsNodes = _neighborsNodes
-
-
- # Dirichlet condition
-  for i in range(0, len(_self.boundaryEdges)):
-   line = _self.boundaryEdges[i][0]
-   v1 = _self.boundaryEdges[i][1] - 1
-   v2 = _self.boundaryEdges[i][2] - 1
-
-   # Outflow
-   if line == 2:
-    _self.aux1BC[v1] = 0.0
-    _self.aux1BC[v2] = 0.0
-
-    _self.dirichletNodes.append(v1)
-    _self.dirichletNodes.append(v2)
-
-  _self.dirichletNodes = np.unique(_self.dirichletNodes)
-
-
-
- def concentrationCondition(_self, _boundaryEdges, _neighborsNodes):
-  _self.dirichletNodes = [] 
-  _self.aux1BC = np.zeros([_self.numNodes,1], dtype = float) #For scipy array solve
-  _self.boundaryEdges = _boundaryEdges
-  _self.neighborsNodes = _neighborsNodes
-
- # Dirichlet condition
-  for i in range(0, len(_self.boundaryEdges)):
-   line = _self.boundaryEdges[i][0]
-   v1 = _self.boundaryEdges[i][1] - 1
-   v2 = _self.boundaryEdges[i][2] - 1
-
-   # Stent
-   if line == 5:
-    _self.aux1BC[v1] = 1.0
-    _self.aux1BC[v2] = 1.0
-
-    _self.dirichletNodes.append(v1)
-    _self.dirichletNodes.append(v2)
-
-  _self.dirichletNodes = np.unique(_self.dirichletNodes)
-
-
-
 
 class NS2DStent:
 
@@ -1453,7 +1327,7 @@ class NS2DStent:
   _self.numVerts = _numVerts
   _self.x = _x
   _self.y = _y
-  _self.maxVx = 3.0/2.0
+  _self.maxVx = 2.0
   _self.L = 1.0
   _self.benchmark_problem = 'NS2D Stent'
 

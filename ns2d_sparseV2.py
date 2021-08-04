@@ -624,38 +624,63 @@ for t in tqdm(range(1, nt)):
     print ' ASSEMBLY:'
     print ' ---------'
   
-    Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, MLumpMini, GxMini, GyMini, polynomial_order = assembly.NS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
 
+    Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, MLumpMini, GxMini, GyMini, polynomial_order = assembly.NS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
+    
+    #scipy
+    #G = np.block([[Gx],
+    #              [Gy]])
+    #
+    #D = G.transpose()
+    #
+    #Z = np.zeros([numVerts,numVerts], dtype=float)
+    #
+    #A = sps.bmat([[(M/dt)+(Kxx+Kyy), G],              # [ (M/dt) + K             Gx]
+    #              [-D              , Z]]).toarray()   # [            (M/dt) + K  Gy]
+    #                                                  # [     Dx          Dy     0 ]
+    
     #numpy
-    Kxx = Kxx.todense()
-    Kyy = Kyy.todense()
-    K   = K.todense()
-    M   = M.todense()
-    Gx  = Gx.todense()
-    Gy  = Gy.todense()
-   
-    KxxMini = KxxMini.todense()
-    KyyMini = KyyMini.todense()
-    KMini   = KMini.todense()
-    MMini   = MMini.todense()
-    GxMini  = GxMini.todense()
-    GyMini  = GyMini.todense()
- 
-    G = np.block([[Gx],
+    #Kxx = Kxx.todense()
+    #Kyy = Kyy.todense()
+    #K   = K.todense()
+    #M   = M.todense()
+    #Gx  = Gx.todense()
+    #Gy  = Gy.todense()
+    #
+    #KxxMini = KxxMini.todense()
+    #KyyMini = KyyMini.todense()
+    #KMini   = KMini.todense()
+    #MMini   = MMini.todense()
+    #GxMini  = GxMini.todense()
+    #GyMini  = GyMini.todense()
+    
+    
+    G = sps.bmat([[Gx],
                   [Gy]])
     
     D = G.transpose()
     
-    Z = np.zeros([numVerts,numVerts], dtype=float)
+    Z = sps.lil_matrix([numVerts,numVerts], dtype=float)
     
     # [ (M/dt) + K             Gx]
     # [            (M/dt) + K  Gy]
     # [     Dx          Dy     0 ]
     
-    A = np.block([[(M/dt)+(1./Re)*(Kxx+Kyy),  -G],              
-                  [      D                 ,   Z]])             
+    #A = sps.bmat([[(M/dt)+(1./Re)*(Kxx+Kyy),  -G],              
+    #              [      D                 ,   Z]])             
+    
+    B = (M/dt)+(1./Re)*(Kxx+Kyy)
+    B = sps.csr_matrix.tolil(B)         
+    G = sps.coo_matrix.tolil(G)         
+    D = sps.coo_matrix.tolil(D)         
+    A = sps.bmat([[B,  -G],              
+                  [D,   None]], format='lil')             
+                                                               
     
     concentrationLHS = (np.copy(MMini)/dt) + (1.0/(Re*Sc))*np.copy(KxxMini) + (1.0/(Re*Sc))*np.copy(KyyMini)
+    
+    #concentrationLHS = concentrationLHS.todense()
+    #concentrationLHS = np.array(concentrationLHS, dtype = float)
     # --------------------------------------------------------------------------------
   
   
@@ -672,53 +697,37 @@ for t in tqdm(range(1, nt)):
     if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
     
      # Applying vx condition
-     start_xVelocityBC_time = time()
      xVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
      xVelocityBC.xVelocityCondition(boundaryEdges,neighborsNodes)
      benchmark_problem = xVelocityBC.benchmark_problem
-     end_xVelocityBC_time = time()
-     xVelocityBC_time = end_xVelocityBC_time - start_xVelocityBC_time
-     print ' xVelocity BC: %.1f seconds' %xVelocityBC_time
-     
+    
      # Applying vy condition
-     start_yVelocityBC_time = time()
      yVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
      yVelocityBC.yVelocityCondition(boundaryEdges,neighborsNodes)
-     end_yVelocityBC_time = time()
-     yVelocityBC_time = end_yVelocityBC_time - start_yVelocityBC_time
-     print ' yVelocity BC: %.1f seconds' %yVelocityBC_time
      
      # Applying pressure condition
-     start_pressureBC_time = time()
      pressureBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
      pressureBC.pressureCondition(boundaryEdges,neighborsNodesPressure)
-     end_pressureBC_time = time()
-     pressureBC_time = end_pressureBC_time - start_pressureBC_time
-     print ' pressure BC: %.1f seconds' %pressureBC_time
-     
+    
      # Applying concentration condition
-     start_concentrationBC_time = time()
      concentrationBC = benchmarkProblems.NS2DStent(numPhysical,numNodes, numVerts,x,y)
      concentrationBC.concentrationCondition(boundaryEdges,neighborsNodes)
-     end_concentrationBC_time = time()
-     concentrationBC_time = end_concentrationBC_time - start_concentrationBC_time
-     print ' concentration BC: %.1f seconds' %concentrationBC_time
     
-     for i in xVelocityBC.dirichletNodes:
-      A[i,:] = 0.0 
-      A[i,i] = 1.0 
+     for mm in xVelocityBC.dirichletNodes:
+       A[mm,:] = 0.0 
+       A[mm,mm] = 1.0 
     
-     for i in yVelocityBC.dirichletNodes:
-      A[i + numNodes,:] = 0.0 
-      A[i + numNodes,i + numNodes] = 1.0 
+     for mm in yVelocityBC.dirichletNodes:
+       A[mm + numNodes,:] = 0.0 
+       A[mm + numNodes,mm + numNodes] = 1.0 
     
-     for i in pressureBC.dirichletNodes:
-      A[i + 2*numNodes,:] = 0.0 
-      A[i + 2*numNodes,i + 2*numNodes] = 1.0 
+     for mm in pressureBC.dirichletNodes:
+       A[mm + 2*numNodes,:] = 0.0 
+       A[mm + 2*numNodes,mm + 2*numNodes] = 1.0 
     
-     for i in concentrationBC.dirichletNodes:
-      concentrationLHS[i,:] = 0.0 
-      concentrationLHS[i,i] = 1.0 
+     for mm in concentrationBC.dirichletNodes:
+       concentrationLHS[mm,:] = 0.0 
+       concentrationLHS[mm,mm] = 1.0 
     
    
     # Quad Element

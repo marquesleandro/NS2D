@@ -592,23 +592,23 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
       K[ii + _numNodes,jj + _numNodes] += element2D.kxx[i][j] + element2D.kyy[i][j]
  
   
-      M[ii,jj] += element2D.mass[i][j]
+      M[ii,jj] += (r_elem)*element2D.mass[i][j]
       M1r[ii,jj] += (1.0/r_elem)*element2D.mass[i][j]
       MLump[ii,ii] += element2D.mass[i][j]
  
-      M[ii + _numNodes,jj + _numNodes] += element2D.mass[i][j]
-      M1r[ii + _numNodes,jj + _numNodes] += (1.0/r_elem)*element2D.mass[i][j]
+      M[ii + _numNodes,jj + _numNodes]     += (r_elem)*element2D.mass[i][j]
+      M1r[ii + _numNodes,jj + _numNodes]   += (1.0/r_elem)*element2D.mass[i][j]
       MLump[ii + _numNodes,ii + _numNodes] += element2D.mass[i][j]
 
-      KxxMini[ii,jj] += (r_elem)*element2D.kxx[i][j]
-      KxyMini[ii,jj] += (r_elem)*element2D.kxy[i][j]
-      KyxMini[ii,jj] += (r_elem)*element2D.kyx[i][j]
-      KyyMini[ii,jj] += (r_elem)*element2D.kyy[i][j]
-      KMini[ii,jj] += (r_elem)*(element2D.kxx[i][j] + element2D.kyy[i][j])
+      KxxMini[ii,jj] += element2D.kxx[i][j]*(r_elem)
+      KxyMini[ii,jj] += element2D.kxy[i][j]*(r_elem)
+      KyxMini[ii,jj] += element2D.kyx[i][j]*(r_elem)
+      KyyMini[ii,jj] += element2D.kyy[i][j]*(r_elem)
+      KMini[ii,jj]   += (element2D.kxx[i][j] + element2D.kyy[i][j])*(r_elem)
 
-      MMini[ii,jj] +=(r_elem)* element2D.mass[i][j]
-      M1rMini[ii,jj] += (1.0/r_elem)*element2D.mass[i][j]
-      MLumpMini[ii,ii] += (r_elem)*element2D.mass[i][j]
+      MMini[ii,jj]     += element2D.mass[i][j]*(r_elem)
+      M1rMini[ii,jj]   += element2D.mass[i][j]
+      MLumpMini[ii,ii] += element2D.mass[i][j]*(r_elem)
  
       GxMini[ii,jj] += (r_elem)*element2D.gx[i][j]
       GyMini[ii,jj] += (r_elem)*element2D.gy[i][j]
@@ -620,7 +620,7 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
      
       Gx[ii,jj] += (r_elem)*element2D.gx[i][j]
       Gy[ii,jj] += (r_elem)*element2D.gy[i][j]
-      M1rMini2[jj,ii] += (1.0/r_elem)*element2D.mass[j][i]
+      M1rMini2[jj,ii] += element2D.mass[j][i]
  
 
 
