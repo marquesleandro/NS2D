@@ -529,6 +529,7 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
  M1rMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
  MLumpMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
  GxMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ GxMinir = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
  GyMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
 
  element2D = gaussianQuadrature.Element2D(_x, _y, _IEN, _GAUSSPOINTS)
@@ -592,12 +593,12 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
       K[ii + _numNodes,jj + _numNodes] += element2D.kxx[i][j] + element2D.kyy[i][j]
  
   
-      M[ii,jj] += (r_elem)*element2D.mass[i][j]
-      M1r[ii,jj] += (1.0/r_elem)*element2D.mass[i][j]
+      M[ii,jj]     += element2D.mass[i][j]*(r_elem)
+      M1r[ii,jj]   += element2D.mass[i][j]*(1.0/r_elem)
       MLump[ii,ii] += element2D.mass[i][j]
  
-      M[ii + _numNodes,jj + _numNodes]     += (r_elem)*element2D.mass[i][j]
-      M1r[ii + _numNodes,jj + _numNodes]   += (1.0/r_elem)*element2D.mass[i][j]
+      M[ii + _numNodes,jj + _numNodes]     += element2D.mass[i][j]*(r_elem)
+      M1r[ii + _numNodes,jj + _numNodes]   += element2D.mass[i][j]*(1.0/r_elem)
       MLump[ii + _numNodes,ii + _numNodes] += element2D.mass[i][j]
 
       KxxMini[ii,jj] += element2D.kxx[i][j]*(r_elem)
@@ -607,19 +608,20 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
       KMini[ii,jj]   += (element2D.kxx[i][j] + element2D.kyy[i][j])*(r_elem)
 
       MMini[ii,jj]     += element2D.mass[i][j]*(r_elem)
-      M1rMini[ii,jj]   += element2D.mass[i][j]
+      M1rMini[ii,jj]   += element2D.mass[i][j]*(1.0/r_elem)
       MLumpMini[ii,ii] += element2D.mass[i][j]*(r_elem)
  
-      GxMini[ii,jj] += (r_elem)*element2D.gx[i][j]
-      GyMini[ii,jj] += (r_elem)*element2D.gy[i][j]
+      GxMini[ii,jj]  += element2D.gx[i][j]*(r_elem)
+      GxMinir[ii,jj] += element2D.gx[i][j]
+      GyMini[ii,jj]  += element2D.gy[i][j]*(r_elem)
  
 
  
      for j in range(0,_pressureFD):
       jj = _IEN[e][j]
      
-      Gx[ii,jj] += (r_elem)*element2D.gx[i][j]
-      Gy[ii,jj] += (r_elem)*element2D.gy[i][j]
+      Gx[ii,jj]       += element2D.gx[i][j]*(r_elem)
+      Gy[ii,jj]       += element2D.gy[i][j]*(r_elem)
       M1rMini2[jj,ii] += element2D.mass[j][i]
  
 
@@ -731,10 +733,11 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
   M1rMini2 =   M1rMini2*1.0
   MLumpMini = MLumpMini*1.0
   GxMini =  GxMini*1.0 
+  GxMinir =  GxMini*1.0 
   GyMini =  GyMini*1.0 
  
  
- return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, M1rMini, M1rMini2, MLumpMini, GxMini, GyMini, polynomial_order
+ return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, M1rMini, M1rMini2, MLumpMini, GxMini, GxMinir, GyMini, polynomial_order
 
 
 
