@@ -283,7 +283,7 @@ print ' ---------'
 
 
 start_time = time()
-Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, M1rMini, M1rMini2, MLumpMini, GxMini, GxMinir, GyMini, polynomial_order = assembly.AxiNS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
+Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, M1rMini, M1rMini2, MLumpMini, GxMini, Gx1rMini, GyMini, Gy1rMini, polynomial_order = assembly.AxiNS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
 
 
 #scipy
@@ -336,23 +336,27 @@ Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMi
 #              [D,   None]], format='lil')             
                                                            
 
-A11 = (MMini/dt)+(1./Re)*(KxxMini + KyyMini - GxMinir + M1rMini)
+A11 = (MMini/dt)+(1./Re)*(2.0*KxxMini + KyyMini - 2.0*Gx1rMini + 2.0*M1rMini)
+A12 = (1./Re)*(KyxMini)
 A13 = -Gx
-A22 = (MMini/dt)+(1./Re)*(KxxMini + KyyMini - GxMinir)
+A21 = (1./Re)*(KxyMini - Gy1rMini)
+A22 = (MMini/dt)+(1./Re)*(KxxMini + 2.0*KyyMini - Gx1rMini)
 A23 = -Gy
-A31 = Gx.transpose()
-A32 = Gy.transpose() + M1rMini2
+A31 = Gx.transpose() + M1rMini2
+A32 = Gy.transpose()
 
 
 
 A11 = sps.csr_matrix.tolil(A11)         
+A12 = sps.lil_matrix.tolil(A12)         
 A13 = sps.csr_matrix.tolil(A13)         
+A21 = sps.csr_matrix.tolil(A21)         
 A22 = sps.csr_matrix.tolil(A22)         
 A23 = sps.csr_matrix.tolil(A23)         
-A31 = sps.lil_matrix.tolil(A31)         
-A32 = sps.csr_matrix.tolil(A32)         
-A = sps.bmat([[A11 , None, A13],              
-              [None, A22 , A23],
+A31 = sps.csr_matrix.tolil(A31)         
+A32 = sps.lil_matrix.tolil(A32)         
+A = sps.bmat([[A11 , A12 , A13],              
+              [A21 , A22 , A23],
               [A31 , A32 , None]], format='lil')             
 
 

@@ -529,8 +529,9 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
  M1rMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
  MLumpMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
  GxMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- GxMinir = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Gx1rMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
  GyMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Gy1rMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
 
  element2D = gaussianQuadrature.Element2D(_x, _y, _IEN, _GAUSSPOINTS)
 
@@ -608,12 +609,13 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
       KMini[ii,jj]   += (element2D.kxx[i][j] + element2D.kyy[i][j])*(r_elem)
 
       MMini[ii,jj]     += element2D.mass[i][j]*(r_elem)
-      M1rMini[ii,jj]   += element2D.mass[i][j]*(1.0/r_elem)
+      M1rMini[ii,jj]   += element2D.mass[i][j]
       MLumpMini[ii,ii] += element2D.mass[i][j]*(r_elem)
  
-      GxMini[ii,jj]  += element2D.gx[i][j]*(r_elem)
-      GxMinir[ii,jj] += element2D.gx[i][j]
-      GyMini[ii,jj]  += element2D.gy[i][j]*(r_elem)
+      GxMini[ii,jj]     += element2D.gx[i][j]*(r_elem)
+      Gx1rMini[ii,jj]   += element2D.gx[i][j]
+      GyMini[ii,jj]     += element2D.gy[i][j]*(r_elem)
+      Gy1rMini[ii,jj]   += element2D.gy[i][j]
  
 
  
@@ -733,11 +735,12 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
   M1rMini2 =   M1rMini2*1.0
   MLumpMini = MLumpMini*1.0
   GxMini =  GxMini*1.0 
-  GxMinir =  GxMini*1.0 
+  Gx1rMini =  GxMini*1.0 
   GyMini =  GyMini*1.0 
+  Gy1rMini =  GyMini*1.0 
  
  
- return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, M1rMini, M1rMini2, MLumpMini, GxMini, GxMinir, GyMini, polynomial_order
+ return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, M1rMini, M1rMini2, MLumpMini, GxMini, Gx1rMini, GyMini, Gy1rMini, polynomial_order
 
 
 
