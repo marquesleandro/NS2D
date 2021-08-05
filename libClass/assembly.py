@@ -508,30 +508,20 @@ def NS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numN
 
 def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _numNodes, _numVerts, _numElements, _IEN, _x, _y, _GAUSSPOINTS):
 
- Kxx = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
- Kxy = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
- Kyx = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
- Kyy = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
- K = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
- M = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
- M1r = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
- MLump = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
- Gx = sps.lil_matrix((_numNodes,_numVerts), dtype = float)
- Gy = sps.lil_matrix((_numNodes,_numVerts), dtype = float)
- M1rMini2 = sps.lil_matrix((_numVerts,_numNodes), dtype = float)
-
- KxxMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- KxyMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- KyxMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- KyyMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- KMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- MMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- M1rMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- MLumpMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- GxMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- Gx1rMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- GyMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
- Gy1rMini = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Kxxr   = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Kxyr   = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Kyxr   = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Kyyr   = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Kr     = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ M2r    = sps.lil_matrix((2*_numNodes,2*_numNodes), dtype = float)
+ Mr     = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ M      = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ MrLump = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Gx     = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Gy     = sps.lil_matrix((_numNodes,_numNodes), dtype = float)
+ Gxr    = sps.lil_matrix((_numNodes,_numVerts), dtype = float)
+ Gyr    = sps.lil_matrix((_numNodes,_numVerts), dtype = float)
+ M1     = sps.lil_matrix((_numVerts,_numNodes), dtype = float)
 
  element2D = gaussianQuadrature.Element2D(_x, _y, _IEN, _GAUSSPOINTS)
 
@@ -580,51 +570,29 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
    
      for j in range(0,_velocityFD):
       jj = _IEN[e][j]
- 
-      Kxx[ii,jj] += element2D.kxx[i][j]
-      Kxy[ii,jj] += element2D.kxy[i][j]
-      Kyx[ii,jj] += element2D.kyx[i][j]
-      Kyy[ii,jj] += element2D.kyy[i][j]
-      K[ii,jj] += element2D.kxx[i][j] + element2D.kyy[i][j]
 
-      Kxx[ii + _numNodes,jj + _numNodes] += element2D.kxx[i][j]
-      Kxy[ii + _numNodes,jj + _numNodes] += element2D.kxy[i][j]
-      Kyx[ii + _numNodes,jj + _numNodes] += element2D.kyx[i][j]
-      Kyy[ii + _numNodes,jj + _numNodes] += element2D.kyy[i][j]
-      K[ii + _numNodes,jj + _numNodes] += element2D.kxx[i][j] + element2D.kyy[i][j]
- 
-  
-      M[ii,jj]     += element2D.mass[i][j]*(r_elem)
-      M1r[ii,jj]   += element2D.mass[i][j]*(1.0/r_elem)
-      MLump[ii,ii] += element2D.mass[i][j]
- 
-      M[ii + _numNodes,jj + _numNodes]     += element2D.mass[i][j]*(r_elem)
-      M1r[ii + _numNodes,jj + _numNodes]   += element2D.mass[i][j]*(1.0/r_elem)
-      MLump[ii + _numNodes,ii + _numNodes] += element2D.mass[i][j]
+      M2r[ii,jj]                         += element2D.mass[i][j]*(r_elem)
+      M2r[ii + _numNodes,jj + _numNodes] += element2D.mass[i][j]*(r_elem)
 
-      KxxMini[ii,jj] += element2D.kxx[i][j]*(r_elem)
-      KxyMini[ii,jj] += element2D.kxy[i][j]*(r_elem)
-      KyxMini[ii,jj] += element2D.kyx[i][j]*(r_elem)
-      KyyMini[ii,jj] += element2D.kyy[i][j]*(r_elem)
-      KMini[ii,jj]   += (element2D.kxx[i][j] + element2D.kyy[i][j])*(r_elem)
+      Kxxr[ii,jj] += element2D.kxx[i][j]*(r_elem)
+      Kxyr[ii,jj] += element2D.kxy[i][j]*(r_elem)
+      Kyxr[ii,jj] += element2D.kyx[i][j]*(r_elem)
+      Kyyr[ii,jj] += element2D.kyy[i][j]*(r_elem)
+      Kr  [ii,jj] += (element2D.kxx[i][j] + element2D.kyy[i][j])*(r_elem)
 
-      MMini[ii,jj]     += element2D.mass[i][j]*(r_elem)
-      M1rMini[ii,jj]   += element2D.mass[i][j]
-      MLumpMini[ii,ii] += element2D.mass[i][j]*(r_elem)
+      Mr[ii,jj]     += element2D.mass[i][j]*(r_elem)
+      M [ii,jj]     += element2D.mass[i][j]
+      MrLump[ii,ii] += element2D.mass[i][j]*(r_elem)
  
-      GxMini[ii,jj]     += element2D.gx[i][j]*(r_elem)
-      Gx1rMini[ii,jj]   += element2D.gx[i][j]
-      GyMini[ii,jj]     += element2D.gy[i][j]*(r_elem)
-      Gy1rMini[ii,jj]   += element2D.gy[i][j]
- 
-
+      Gx[ii,jj]     += element2D.gx[i][j]*(r_elem)
+      Gy[ii,jj]     += element2D.gy[i][j]*(r_elem)
  
      for j in range(0,_pressureFD):
       jj = _IEN[e][j]
      
-      Gx[ii,jj]       += element2D.gx[i][j]*(r_elem)
-      Gy[ii,jj]       += element2D.gy[i][j]*(r_elem)
-      M1rMini2[jj,ii] += element2D.mass[j][i]
+      Gxr[ii,jj] += element2D.gx[i][j]*(r_elem)
+      Gyr[ii,jj] += element2D.gy[i][j]*(r_elem)
+      M1 [jj,ii] += element2D.mass[j][i]
  
 
 
@@ -715,32 +683,19 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
  elif _simulation_option == 0:
   polynomial_order = 'Debug'
 
-  Kxx = Kxx*1.0 
-  Kxy = Kxy*1.0
-  Kyx = Kyx*1.0
-  Kyy = Kyy*1.0
-  K =   K*1.0
-  M =   M*1.0
-  MLump = MLump*1.0
-  Gx =  Gx*1.0 
-  Gy =  Gy*1.0 
+  Kxxr   = Kxxr  *1.0   
+  Kxyr   = Kxyr  *1.0 
+  Kyxr   = Kyxr  *1.0 
+  Kyyr   = Kyyr  *1.0 
+  Kr     = Kr    *1.0 
+  M2r    = M2r   *1.0 
+  Mr     = Mr    *1.0 
+  M      = M     *1.0 
+  MrLump = MrLump*1.0
+  Gx     = Gx    *1.0 
+  Gy     = Gy    *1.0 
+  Gxr    = Gxr   *1.0 
+  Gyr    = Gyr   *1.0 
+  M1     = M1    *1.0 
 
-  KxxMini = KxxMini*1.0 
-  KxyMini = KxyMini*1.0
-  KyxMini = KyxMini*1.0
-  KyyMini = KyyMini*1.0
-  KMini =   KMini*1.0
-  MMini =   MMini*1.0
-  M1rMini =   MMini*1.0
-  M1rMini2 =   M1rMini2*1.0
-  MLumpMini = MLumpMini*1.0
-  GxMini =  GxMini*1.0 
-  Gx1rMini =  GxMini*1.0 
-  GyMini =  GyMini*1.0 
-  Gy1rMini =  GyMini*1.0 
- 
- 
- return Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, M1rMini, M1rMini2, MLumpMini, GxMini, Gx1rMini, GyMini, Gy1rMini, polynomial_order
-
-
-
+ return Kxxr, Kxyr, Kyxr, Kyyr, Kr, M2r, Mr, M, MrLump, Gx, Gy, Gxr, Gyr, M1, polynomial_order
