@@ -563,7 +563,8 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
     v1 = _IEN[e][0]
     v2 = _IEN[e][1]
     v3 = _IEN[e][2]
-    r_elem = (_x[v1] + _x[v2] + _x[v3])/3.0
+    #r_elem = (_y[v1] + _y[v2] + _y[v3])/3.0
+    r_elem = 1.0
  
     for i in range(0,_velocityFD): 
      ii = _IEN[e][i]
@@ -584,8 +585,8 @@ def AxiNS2D(_simulation_option, _polynomial_option, _velocityFD, _pressureFD, _n
       M [ii,jj]     += element2D.mass[i][j]
       MrLump[ii,ii] += element2D.mass[i][j]*(r_elem)
  
-      Gx[ii,jj]     += element2D.gx[i][j]*(r_elem)
-      Gy[ii,jj]     += element2D.gy[i][j]*(r_elem)
+      Gx[ii,jj]     += element2D.gx[i][j]
+      Gy[ii,jj]     += element2D.gy[i][j]
  
      for j in range(0,_pressureFD):
       jj = _IEN[e][j]

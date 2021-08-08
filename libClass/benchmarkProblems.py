@@ -1319,7 +1319,7 @@ class NS2DPoiseuille:
   _self.dirichletNodes = np.unique(_self.dirichletNodes)
 
 
-class NS2DStent:
+class AxiNS2DStent:
 
  def __init__(_self, _numPhysical, _numNodes, _numVerts, _x, _y):
   _self.numPhysical = _numPhysical

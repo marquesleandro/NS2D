@@ -288,47 +288,43 @@ Kxxr, Kxyr, Kyxr, Kyyr, Kr, M2r, Mr, M, MrLump, Gx, Gy, Gxr, Gyr, M1, polynomial
 
 
 #prof. gustavo reference
-A11 = (Mr/dt) + (1./Re)*(Kxxr + Kyyr + 2.0*M)
+#A11 = (Mr/dt) + (1./Re)*(Kxxr + Kyyr + 2.0*M)
+#A13 = -Gxr
+#A22 = (Mr/dt) + (1./Re)*(Kxxr + Kyyr)
+#A23 = -Gyr
+#A31 = Gxr.transpose() + M1
+#A32 = Gyr.transpose()
+#
+#A11 = sps.csr_matrix.tolil(A11)         
+#A13 = sps.csr_matrix.tolil(A13)         
+#A22 = sps.csr_matrix.tolil(A22)         
+#A23 = sps.csr_matrix.tolil(A23)         
+#A31 = sps.csr_matrix.tolil(A31)         
+#A32 = sps.lil_matrix.tolil(A32)         
+#A = sps.bmat([[A11  , None , A13],              
+#              [None , A22  , A23],
+#              [A31  , A32  , None]], format='lil')             
+#
+
+# -----
+
+#calculated using r_avg in MEF integral
+A11 = (Mr/dt) + (1./Re)*(Kyyr + Kxxr)
 A13 = -Gxr
-A22 = (Mr/dt) + (1./Re)*(Kxxr + Kyyr)
+A22 = (Mr/dt) + (1./Re)*(Kyyr + Kxxr)
 A23 = -Gyr
-A31 = Gxr.transpose() + M1
+A31 = Gxr.transpose()
 A32 = Gyr.transpose()
 
 A11 = sps.csr_matrix.tolil(A11)         
 A13 = sps.csr_matrix.tolil(A13)         
 A22 = sps.csr_matrix.tolil(A22)         
 A23 = sps.csr_matrix.tolil(A23)         
-A31 = sps.csr_matrix.tolil(A31)         
+A31 = sps.lil_matrix.tolil(A31)         
 A32 = sps.lil_matrix.tolil(A32)         
 A = sps.bmat([[A11  , None , A13],              
               [None , A22  , A23],
               [A31  , A32  , None]], format='lil')             
-
-
-# -----
-
-#calculated
-#A11 = (Mr/dt) + (1./Re)*(2.0*Kxxr + Kyyr - 2.0*Gx)
-#A12 = (1./Re)*(Kxyr)
-#A13 = -Gxr
-#A21 = (1./Re)*(Kyxr - Gy)
-#A22 = (Mr/dt) + (1./Re)*(Kxxr + 2.0*Kyyr - Gx)
-#A23 = -Gyr
-#A31 = Gxr.transpose() + M
-#A32 = Gyr.transpose()
-
-#A11 = sps.csr_matrix.tolil(A11)         
-#A12 = sps.lil_matrix.tolil(A12)         
-#A13 = sps.csr_matrix.tolil(A13)         
-#A21 = sps.csr_matrix.tolil(A21)         
-#A22 = sps.csr_matrix.tolil(A22)         
-#A23 = sps.csr_matrix.tolil(A23)         
-#A31 = sps.csr_matrix.tolil(A31)         
-#A32 = sps.lil_matrix.tolil(A32)         
-#A = sps.bmat([[A11 , A12 , A13],              
-#              [A21 , A22 , A23],
-#              [A31 , A32 , None]], format='lil')             
 
 
 concentrationLHS = (np.copy(Mr)/dt) + (1.0/(Re*Sc))*np.copy(Kxxr) + (1.0/(Re*Sc))*np.copy(Kyyr)
@@ -358,20 +354,20 @@ start_time = time()
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
 
  # Applying vx condition
- xVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
+ xVelocityBC = benchmarkProblems.AxiNS2DStent(numPhysical,numNodes,numVerts,x,y)
  xVelocityBC.xVelocityCondition(boundaryEdges,neighborsNodes)
  benchmark_problem = xVelocityBC.benchmark_problem
 
  # Applying vy condition
- yVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
+ yVelocityBC = benchmarkProblems.AxiNS2DStent(numPhysical,numNodes,numVerts,x,y)
  yVelocityBC.yVelocityCondition(boundaryEdges,neighborsNodes)
  
  # Applying pressure condition
- pressureBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
+ pressureBC = benchmarkProblems.AxiNS2DStent(numPhysical,numNodes,numVerts,x,y)
  pressureBC.pressureCondition(boundaryEdges,neighborsNodesPressure)
 
  # Applying concentration condition
- concentrationBC = benchmarkProblems.NS2DStent(numPhysical,numNodes, numVerts,x,y)
+ concentrationBC = benchmarkProblems.AxiNS2DStent(numPhysical,numNodes, numVerts,x,y)
  concentrationBC.concentrationCondition(boundaryEdges,neighborsNodes)
 
  for mm in xVelocityBC.dirichletNodes:
