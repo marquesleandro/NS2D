@@ -154,7 +154,8 @@ if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
  #mshFileName = 'linearHalfPoiseuille.msh'
  #mshFileName = 'linearStraightGeo.msh'
  #mshFileName = 'poiseuille.msh'
- mshFileName = 'poiseuilleV2.msh'
+ #mshFileName = 'poiseuilleV2.msh'
+ mshFileName = 'CurvedGeoStrut.msh'
 
  pathMSHFile = searchMSH.Find(mshFileName)
  if pathMSHFile == 'File not found':
@@ -282,7 +283,7 @@ print ' ---------'
 
 
 start_time = time()
-Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.NS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
+Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, MLumpMini, GxMini, GyMini, polynomial_order = assembly.NS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
 
 #scipy
 #G = np.block([[Gx],
@@ -303,16 +304,28 @@ Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.NS2D(simula
 #M   = M.todense()
 #Gx  = Gx.todense()
 #Gy  = Gy.todense()
+#
+#KxxMini = KxxMini.todense()
+#KyyMini = KyyMini.todense()
+#KMini   = KMini.todense()
+#MMini   = MMini.todense()
+#GxMini  = GxMini.todense()
+#GyMini  = GyMini.todense()
+
 
 G = sps.bmat([[Gx],
               [Gy]])
 
 D = G.transpose()
 
+Z = sps.lil_matrix([numVerts,numVerts], dtype=float)
 
 # [ (M/dt) + K             Gx]
 # [            (M/dt) + K  Gy]
 # [     Dx          Dy     0 ]
+
+#A = sps.bmat([[(M/dt)+(1./Re)*(Kxx+Kyy),  -G],              
+#              [      D                 ,   Z]])             
 
 B = (M/dt)+(1./Re)*(Kxx+Kyy)
 B = sps.csr_matrix.tolil(B)         
@@ -321,6 +334,11 @@ D = sps.coo_matrix.tolil(D)
 A = sps.bmat([[B,  -G],              
               [D,   None]], format='lil')             
                                                            
+
+concentrationLHS = (np.copy(MMini)/dt) + (1.0/(Re*Sc))*np.copy(KxxMini) + (1.0/(Re*Sc))*np.copy(KyyMini)
+
+#concentrationLHS = concentrationLHS.todense()
+#concentrationLHS = np.array(concentrationLHS, dtype = float)
 
 
 end_time = time()
@@ -344,84 +362,37 @@ start_time = time()
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
 
  # Applying vx condition
- xVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+ xVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
  xVelocityBC.xVelocityCondition(boundaryEdges,neighborsNodes)
  benchmark_problem = xVelocityBC.benchmark_problem
 
  # Applying vy condition
- yVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+ yVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
  yVelocityBC.yVelocityCondition(boundaryEdges,neighborsNodes)
  
  # Applying pressure condition
- pressureBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+ pressureBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
  pressureBC.pressureCondition(boundaryEdges,neighborsNodesPressure)
 
  # Applying concentration condition
- #concentrationLHS0 = (sps.lil_matrix.copy(M)/dt) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kxx) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kyy)
- #concentrationBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
- #concentrationBC.concentrationCondition(boundaryEdges,concentrationLHS0,neighborsNodes)
+ concentrationBC = benchmarkProblems.NS2DStent(numPhysical,numNodes, numVerts,x,y)
+ concentrationBC.concentrationCondition(boundaryEdges,neighborsNodes)
 
- # Applying Gaussian Elimination
- #gaussianElimination = benchmarkProblems.NS2D(numPhysical, numNodes, numVerts)
- #gaussianElimination.gaussianElimination(A, xVelocityBC.dirichletNodes, yVelocityBC.dirichletNodes, pressureBC.dirichletNodes, neighborsNodes, neighborsNodesPressure, xVelocityBC.aux1BC, yVelocityBC.aux1BC, pressureBC.aux1BC)
- #LHS = gaussianElimination.LHS
+ for mm in xVelocityBC.dirichletNodes:
+   A[mm,:] = 0.0 
+   A[mm,mm] = 1.0 
 
- for i in xVelocityBC.dirichletNodes:
-  A[i,:] = 0.0 
-  A[i,i] = 1.0 
+ for mm in yVelocityBC.dirichletNodes:
+   A[mm + numNodes,:] = 0.0 
+   A[mm + numNodes,mm + numNodes] = 1.0 
 
- for i in yVelocityBC.dirichletNodes:
-  A[i + numNodes,:] = 0.0 
-  A[i + numNodes,i + numNodes] = 1.0 
+ for mm in pressureBC.dirichletNodes:
+   A[mm + 2*numNodes,:] = 0.0 
+   A[mm + 2*numNodes,mm + 2*numNodes] = 1.0 
 
- for i in pressureBC.dirichletNodes:
-  A[i + 2*numNodes,:] = 0.0 
-  A[i + 2*numNodes,i + 2*numNodes] = 1.0 
-
-
- #xVelocityDirichletVector = np.zeros([numNodes,1], dtype = float)
- #xVelocityAux2BC = np.ones([numNodes,1], dtype = float)
- #for mm in xVelocityBC.dirichletNodes:
- # for nn in neighborsNodes[mm]:
- #  xVelocityDirichletVector[nn] -= float(A[nn,mm]*xVelocityBC.aux1BC[mm])
- #
- # A[:,mm] = 0.0
- # A[mm,:] = 0.0
- # A[mm,mm] = 1.0
- # xVelocityDirichletVector[mm] = xVelocityBC.aux1BC[mm]
- # xVelocityAux2BC[mm] = 0.0
-
-
- #yVelocityDirichletVector = np.zeros([numNodes,1], dtype = float)
- #yVelocityAux2BC = np.ones([numNodes,1], dtype = float)
- #for mm in yVelocityBC.dirichletNodes:
- # for nn in neighborsNodes[mm]:
- #  yVelocityDirichletVector[nn] -= float(A[nn + numNodes,mm + numNodes]*yVelocityBC.aux1BC[mm])
- # 
- # A[:,mm + numNodes] = 0.0
- # A[mm + numNodes,:] = 0.0
- # A[mm + numNodes,mm + numNodes] = 1.0
- # yVelocityDirichletVector[mm] = yVelocityBC.aux1BC[mm]
- # yVelocityAux2BC[mm] = 0.0
-
-
- #pressureDirichletVector = np.zeros([numVerts,1], dtype = float)
- #pressureAux2BC = np.ones([numVerts,1], dtype = float)
- #for mm in pressureBC.dirichletNodes:
- # for nn in neighborsNodesPressure[mm]:
- #  pressureDirichletVector[nn] -= float(A[nn + 2*numNodes,mm + 2*numNodes]*pressureBC.aux1BC[mm])
-
- # A[:,mm + 2*numNodes] = 0.0
- # A[mm + 2*numNodes,:] = 0.0
- # A[mm + 2*numNodes,mm + 2*numNodes] = 1.0
- # pressureDirichletVector[mm] = pressureBC.aux1BC[mm]
- # pressureAux2BC[mm] = 0.0
-
- #dirichletVector = np.concatenate((xVelocityDirichletVector,yVelocityDirichletVector),axis=0)
- #dirichletVector = np.concatenate((dirichletVector,pressureDirichletVector),axis=0)
-
- #aux2BC = np.concatenate((xVelocityAux2BC,yVelocityAux2BC),axis=0)
- #aux2BC = np.concatenate((aux2BC,pressureAux2BC),axis=0)
+ for mm in concentrationBC.dirichletNodes:
+   concentrationLHS[mm,:] = 0.0 
+   concentrationLHS[mm,mm] = 1.0 
 
 
 
@@ -465,7 +436,7 @@ if import_option == 0:
  vx = np.copy(xVelocityBC.aux1BC)
  vy = np.copy(yVelocityBC.aux1BC)
  p = np.copy(pressureBC.aux1BC)
- #c = np.copy(concentrationBC.aux1BC)
+ c = np.copy(concentrationBC.aux1BC)
  sol = np.concatenate((vx, vy, p), axis=0)
  # ---------------------------------------------------------------------------------
  
@@ -529,7 +500,7 @@ os.chdir(initial_path)
 # ------------------------ Export VTK File ---------------------------------------
 # Linear and Mini Elements
 if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:   
- save = exportVTK.Linear2D(x,y,IEN,numVerts,numElements,p,p,p,vx,vy)
+ save = exportVTK.Linear2D(x,y,IEN,numVerts,numElements,p,p,c,vx,vy)
  save.create_dir(folderResults)
  save.saveVTK(folderResults + str(0))
 
@@ -653,29 +624,63 @@ for t in tqdm(range(1, nt)):
     print ' ASSEMBLY:'
     print ' ---------'
   
-    Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, polynomial_order = assembly.NS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
 
-    #numpy
-    Kxx = Kxx.todense()
-    Kyy = Kyy.todense()
-    K   = K.todense()
-    M   = M.todense()
-    Gx  = Gx.todense()
-    Gy  = Gy.todense()
+    Kxx, Kxy, Kyx, Kyy, K, M, MLump, Gx, Gy, KxxMini, KxyMini, KyxMini, KyyMini, KMini, MMini, MLumpMini, GxMini, GyMini, polynomial_order = assembly.NS2D(simulation_option, polynomial_option, velocityFreedomDegree, pressureFreedomDegree, numNodes, numVerts, numElements, IEN, x, y, gausspoints)
     
-    G = np.block([[Gx],
+    #scipy
+    #G = np.block([[Gx],
+    #              [Gy]])
+    #
+    #D = G.transpose()
+    #
+    #Z = np.zeros([numVerts,numVerts], dtype=float)
+    #
+    #A = sps.bmat([[(M/dt)+(Kxx+Kyy), G],              # [ (M/dt) + K             Gx]
+    #              [-D              , Z]]).toarray()   # [            (M/dt) + K  Gy]
+    #                                                  # [     Dx          Dy     0 ]
+    
+    #numpy
+    #Kxx = Kxx.todense()
+    #Kyy = Kyy.todense()
+    #K   = K.todense()
+    #M   = M.todense()
+    #Gx  = Gx.todense()
+    #Gy  = Gy.todense()
+    #
+    #KxxMini = KxxMini.todense()
+    #KyyMini = KyyMini.todense()
+    #KMini   = KMini.todense()
+    #MMini   = MMini.todense()
+    #GxMini  = GxMini.todense()
+    #GyMini  = GyMini.todense()
+    
+    
+    G = sps.bmat([[Gx],
                   [Gy]])
     
     D = G.transpose()
     
-    Z = np.zeros([numVerts,numVerts], dtype=float)
+    Z = sps.lil_matrix([numVerts,numVerts], dtype=float)
     
     # [ (M/dt) + K             Gx]
     # [            (M/dt) + K  Gy]
     # [     Dx          Dy     0 ]
     
-    A = np.block([[(M/dt)+(1./Re)*(Kxx+Kyy),  -G],              
-                  [      D                 ,   Z]])             
+    #A = sps.bmat([[(M/dt)+(1./Re)*(Kxx+Kyy),  -G],              
+    #              [      D                 ,   Z]])             
+    
+    B = (M/dt)+(1./Re)*(Kxx+Kyy)
+    B = sps.csr_matrix.tolil(B)         
+    G = sps.coo_matrix.tolil(G)         
+    D = sps.coo_matrix.tolil(D)         
+    A = sps.bmat([[B,  -G],              
+                  [D,   None]], format='lil')             
+                                                               
+    
+    concentrationLHS = (np.copy(MMini)/dt) + (1.0/(Re*Sc))*np.copy(KxxMini) + (1.0/(Re*Sc))*np.copy(KyyMini)
+    
+    #concentrationLHS = concentrationLHS.todense()
+    #concentrationLHS = np.array(concentrationLHS, dtype = float)
     # --------------------------------------------------------------------------------
   
   
@@ -692,54 +697,38 @@ for t in tqdm(range(1, nt)):
     if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:
     
      # Applying vx condition
-     start_xVelocityBC_time = time()
-     xVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+     xVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
      xVelocityBC.xVelocityCondition(boundaryEdges,neighborsNodes)
      benchmark_problem = xVelocityBC.benchmark_problem
-     end_xVelocityBC_time = time()
-     xVelocityBC_time = end_xVelocityBC_time - start_xVelocityBC_time
-     print ' xVelocity BC: %.1f seconds' %xVelocityBC_time
-     
+    
      # Applying vy condition
-     start_yVelocityBC_time = time()
-     yVelocityBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+     yVelocityBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
      yVelocityBC.yVelocityCondition(boundaryEdges,neighborsNodes)
-     end_yVelocityBC_time = time()
-     yVelocityBC_time = end_yVelocityBC_time - start_yVelocityBC_time
-     print ' yVelocity BC: %.1f seconds' %yVelocityBC_time
      
      # Applying pressure condition
-     start_pressureBC_time = time()
-     pressureBC = benchmarkProblems.NS2DPoiseuille(numPhysical,numNodes,numVerts,x,y)
+     pressureBC = benchmarkProblems.NS2DStent(numPhysical,numNodes,numVerts,x,y)
      pressureBC.pressureCondition(boundaryEdges,neighborsNodesPressure)
-     end_pressureBC_time = time()
-     pressureBC_time = end_pressureBC_time - start_pressureBC_time
-     print ' pressure BC: %.1f seconds' %pressureBC_time
-     
+    
      # Applying concentration condition
-     #concentrationLHS0 = (sps.lil_matrix.copy(M)/dt) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kxx) + (1.0/(Re*Sc))*sps.lil_matrix.copy(Kyy)
-     #concentrationBC = benchmarkProblems.linearPoiseuille(numPhysical,numNodes,x,y)
-     #concentrationBC.concentrationCondition(boundaryEdges,concentrationLHS0,neighborsNodes)
+     concentrationBC = benchmarkProblems.NS2DStent(numPhysical,numNodes, numVerts,x,y)
+     concentrationBC.concentrationCondition(boundaryEdges,neighborsNodes)
     
-     # Applying Gaussian Elimination
-     #gaussianElimination = benchmarkProblems.NS2D(numPhysical, numNodes, numVerts)
-     #gaussianElimination.gaussianElimination(A, xVelocityBC.dirichletNodes, yVelocityBC.dirichletNodes, pressureBC.dirichletNodes, neighborsNodes, neighborsNodesPressure, xVelocityBC.aux1BC, yVelocityBC.aux1BC, pressureBC.aux1BC)
-     #LHS = gaussianElimination.LHS
+     for mm in xVelocityBC.dirichletNodes:
+       A[mm,:] = 0.0 
+       A[mm,mm] = 1.0 
     
-     for i in xVelocityBC.dirichletNodes:
-      A[i,:] = 0.0 
-      A[i,i] = 1.0 
+     for mm in yVelocityBC.dirichletNodes:
+       A[mm + numNodes,:] = 0.0 
+       A[mm + numNodes,mm + numNodes] = 1.0 
     
-     for i in yVelocityBC.dirichletNodes:
-      A[i + numNodes,:] = 0.0 
-      A[i + numNodes,i + numNodes] = 1.0 
+     for mm in pressureBC.dirichletNodes:
+       A[mm + 2*numNodes,:] = 0.0 
+       A[mm + 2*numNodes,mm + 2*numNodes] = 1.0 
     
-     for i in pressureBC.dirichletNodes:
-      A[i + 2*numNodes,:] = 0.0 
-      A[i + 2*numNodes,i + 2*numNodes] = 1.0 
+     for mm in concentrationBC.dirichletNodes:
+       concentrationLHS[mm,:] = 0.0 
+       concentrationLHS[mm,mm] = 1.0 
     
-    
-   
    
     # Quad Element
     elif polynomial_option == 3:
@@ -820,7 +809,7 @@ for t in tqdm(range(1, nt)):
 
    # Mini Element   
    elif polynomial_option == 2:
-    vx_d, vy_d = semiLagrangian.Mini2D(numNodes, neighborsElements, IEN, x, y, vxALE, vyALE, dt, vx, vy)
+    vx_d, vy_d, c_d = semiLagrangian.Mini2D(numNodes, neighborsElements, IEN, x, y, vxALE, vyALE, dt, vx, vy, c)
  
    # Quad Element   
    elif polynomial_option == 3:
@@ -845,44 +834,28 @@ for t in tqdm(range(1, nt)):
   #---------- Step 1 - Solve the continuity and momentum equation ----------------------
   start_solver_time = time()
 
-  # ---- numpy
-  #b = np.dot(M/dt,np.concatenate((vx_d,vy_d),axis=0))
-  #b = np.dot(M/dt,np.concatenate((vx,vy),axis=0))  #stokes
-  #bp = np.zeros([numVerts,1], dtype = float)
-  #b = np.concatenate((b,bp),axis=0)
-
-  #for i in xVelocityBC.dirichletNodes:
-  # b[i] = xVelocityBC.aux1BC[i]
-
-  #for i in yVelocityBC.dirichletNodes:
-  # b[i + numNodes] = yVelocityBC.aux1BC[i]
-
-  #for i in pressureBC.dirichletNodes:
-  # b[i + 2*numNodes] = pressureBC.aux1BC[i]
-  
-  #sol = np.linalg.solve(A,b)
-  # ---- numpy
-
-  # ---- scipy
-  AA = sps.lil_matrix.copy(M/dt)
-  b = sps.lil_matrix.dot(AA,(np.concatenate((vx_d,vy_d),axis=0)))
+  AA = np.copy(M.todense()/dt)
+  b = np.dot(AA,np.concatenate((vx_d,vy_d),axis=0))
   #b = np.dot(M/dt,np.concatenate((vx,vy),axis=0))  #stokes
   bp = np.zeros([numVerts,1], dtype = float)
   b = np.concatenate((b,bp),axis=0)
 
-  #b = np.multiply(b,aux2BC)
-  #b = b + dirichletVector
-  print '1 ok'
-  sol = scipy.sparse.linalg.cg(A,b, sol, maxiter=1.0e+02, tol=1.0e-03)
-  print '2 ok'
-  sol = sol[0].reshape((len(sol[0]),1))
-  print '3 ok'
-  # ---- scipy
+  for i in xVelocityBC.dirichletNodes:
+   b[i] = xVelocityBC.aux1BC[i]
 
-  vx = sol[0:numNodes]
-  vy = sol[numNodes:2*numNodes]
-  p  = sol[2*numNodes:]
-  print '4 ok'
+  for i in yVelocityBC.dirichletNodes:
+   b[i + numNodes] = yVelocityBC.aux1BC[i]
+
+  for i in pressureBC.dirichletNodes:
+   b[i + 2*numNodes] = pressureBC.aux1BC[i]
+
+  sol = scipy.sparse.linalg.spsolve(A.tocsr(),b)
+  #sol = scipy.sparse.linalg.cg(A,b, sol, maxiter=1.0e+03, tol=1.0e-04)
+  #sol = sol[0].reshape((len(sol[0]),1))
+
+  vx = np.reshape(np.array(sol[0:numNodes]),(len(vx),1))
+  vy = np.reshape(np.array(sol[numNodes:2*numNodes]),(len(vy),1))
+  p  = np.reshape(np.array(sol[2*numNodes:]),(len(p),1))
 
   end_solver_time = time()
   solver_time = end_solver_time - start_solver_time
@@ -892,37 +865,40 @@ for t in tqdm(range(1, nt)):
  
 
   #---------- Step 2 - Solve the specie transport equation ----------------------
-  #start_concentrationsolver_time = time()
+  start_concentrationsolver_time = time()
 
-  #c_old = np.copy(c)
-  ## Taylor Galerkin Scheme
-  #if scheme_option == 1:
-  # A = np.copy(M)/dt 
-  # concentrationRHS = sps.lil_matrix.dot(A,c) - np.multiply(vx,sps.lil_matrix.dot(Gx,c))\
-  #       - np.multiply(vy,sps.lil_matrix.dot(Gy,c))\
-  #       - (dt/2.0)*np.multiply(vx,(np.multiply(vx,sps.lil_matrix.dot(Kxx,c)) + np.multiply(vy,sps.lil_matrix.dot(Kyx,c))))\
-  #       - (dt/2.0)*np.multiply(vy,(np.multiply(vx,sps.lil_matrix.dot(Kxy,c)) + np.multiply(vy,sps.lil_matrix.dot(Kyy,c))))
-  # concentrationRHS = np.multiply(concentrationRHS,concentrationBC.aux2BC)
-  # concentrationRHS = concentrationRHS + concentrationBC.dirichletVector
-  # c = scipy.sparse.linalg.cg(concentrationBC.LHS,concentrationRHS,c, maxiter=1.0e+05, tol=1.0e-05)
-  # c = c[0].reshape((len(c[0]),1))
+  c_old = np.copy(c)
+  # Taylor Galerkin Scheme
+  if scheme_option == 1:
+   A = np.copy(M)/dt 
+   concentrationRHS = sps.lil_matrix.dot(A,c) - np.multiply(vx,sps.lil_matrix.dot(Gx,c))\
+         - np.multiply(vy,sps.lil_matrix.dot(Gy,c))\
+         - (dt/2.0)*np.multiply(vx,(np.multiply(vx,sps.lil_matrix.dot(Kxx,c)) + np.multiply(vy,sps.lil_matrix.dot(Kyx,c))))\
+         - (dt/2.0)*np.multiply(vy,(np.multiply(vx,sps.lil_matrix.dot(Kxy,c)) + np.multiply(vy,sps.lil_matrix.dot(Kyy,c))))
+   concentrationRHS = np.multiply(concentrationRHS,concentrationBC.aux2BC)
+   concentrationRHS = concentrationRHS + concentrationBC.dirichletVector
+   c = scipy.sparse.linalg.cg(concentrationBC.LHS,concentrationRHS,c, maxiter=1.0e+05, tol=1.0e-05)
+   c = c[0].reshape((len(c[0]),1))
  
  
  
-  ## Semi-Lagrangian Scheme
-  #elif scheme_option == 2:
-  # A = np.copy(M)/dt
-  # concentrationRHS = sps.lil_matrix.dot(A,c_d)
+  # Semi-Lagrangian Scheme
+  elif scheme_option == 2:
+   concentrationRHS = np.dot(MMini.todense()/dt,c_d)
  
-  # concentrationRHS = np.multiply(concentrationRHS,concentrationBC.aux2BC)
-  # concentrationRHS = concentrationRHS + concentrationBC.dirichletVector
- 
-  # c = scipy.sparse.linalg.cg(concentrationBC.LHS,concentrationRHS, c, maxiter=1.0e+05, tol=1.0e-05)
-  # c = c[0].reshape((len(c[0]),1))
+   for i in concentrationBC.dirichletNodes:
+    concentrationRHS[i] = concentrationBC.aux1BC[i]
 
-  #end_concentrationsolver_time = time()
-  #concentrationsolver_time = end_concentrationsolver_time - start_concentrationsolver_time
-  #print ' Concentration Solver: %.1f seconds' %concentrationsolver_time
+   c = scipy.sparse.linalg.spsolve(concentrationLHS.tocsr(),concentrationRHS)
+   #c = scipy.sparse.linalg.cg(concentrationLHS,concentrationRHS, c, maxiter=1.0e+05, tol=1.0e-05)
+   #c = c[0].reshape((len(c[0]),1))
+
+
+
+
+  end_concentrationsolver_time = time()
+  concentrationsolver_time = end_concentrationsolver_time - start_concentrationsolver_time
+  print ' Concentration Solver: %.1f seconds' %concentrationsolver_time
   #----------------------------------------------------------------------------------
  
 
@@ -941,7 +917,7 @@ for t in tqdm(range(1, nt)):
 
   # Linear and Mini Elements
   if polynomial_option == 0 or polynomial_option == 1 or polynomial_option == 2:   
-   save = exportVTK.Linear2D(x,y,IEN,numVerts,numElements,p,p,p,vx,vy)
+   save = exportVTK.Linear2D(x,y,IEN,numVerts,numElements,p,p,c,vx,vy)
    save.create_dir(folderResults)
    save.saveVTK(folderResults + str(t))
  
